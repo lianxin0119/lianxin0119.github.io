@@ -347,7 +347,7 @@
 
 <h3 id="协程作用域"><a href="#协程作用域" class="headerlink" title="协程作用域"></a>协程作用域</h3><p>协程作用域(<code>CoroutineScope</code>)，用于管理协程：</p>
 <ul>
-<li><p>启动协程的方式</p>
+<li><p>管理启动协程的方式</p>
 <p>它定义了<code>launch</code>、<code>async</code>、<code>withContext</code>等协程启动方法，并在这些方法内定义了启动子协程时上下文的继承方式。</p>
 </li>
 <li><p>管理协程生命周期</p>
@@ -369,88 +369,6 @@
         <tag>协程</tag>
         <tag>异步</tag>
         <tag>结构化并发</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Kotlin中的委托</title>
-    <url>/2023/02/08/Delegation/</url>
-    <content><![CDATA[<h3 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h3><p>　　见名知意，委托就是把工作委托/委派给另一个对象去处理，对象本身不会去做这个工作。相较于Java，这是Kotlin中引入的新的语法：<strong>委托</strong>，通过<code>by</code>关键字来使用。在kotlin当中，委托主要分为两种，分别是<strong>属性委托</strong>和<strong>类委托</strong>。</p>
-<h3 id="属性委托"><a href="#属性委托" class="headerlink" title="属性委托"></a>属性委托</h3><p>　　属性也就是变量，在kotlin中声明一个变量的时候会为这个变量添加<code>get</code>和<code>set</code>方法。而属性委托就是将<code>get</code>和<code>set</code>委托给一个第三方实现。这个时候我们就可以按照语法格式：<code>val/var &lt;属性名&gt;: &lt;类型&gt; by &lt;表达式&gt;</code>来声明一个委托属性，因为kotlin语法的特性，这里的<code>&lt;类型&gt;</code>是可以省略的，由kotlin进行类型推定。举个例子：</p>
-<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ByTest</span> </span>&#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">val</span> param: <span class="built_in">Int</span> <span class="keyword">by</span> Delegate()</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">fun</span> <span class="title">method</span><span class="params">()</span></span> &#123;</span><br><span class="line">        println(param.toString())</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>　　因为<code>val</code>只有<code>get</code>方法，所以我们只需要把<code>param</code>的<code>get</code>方法委托给<code>Delegation</code>类来处理。这个时候我们需要在<code>Delegation</code>中去实现被委托的方法。有两种方式来实现，第一种方式就是纯手写：</p>
-<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Delegation</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/** get委托 */</span></span><br><span class="line">    <span class="keyword">operator</span> <span class="function"><span class="keyword">fun</span> <span class="title">getValue</span><span class="params">(thisRef: <span class="type">Any</span>?, property: <span class="type">KProperty</span>&lt;*&gt;)</span></span>: <span class="built_in">Int</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>实现委托的规则只有简简单单的几点要求。</p>
-<ul>
-<li>方法必须被<code>operator</code>修饰，这个关键字是操作符重载。</li>
-<li>方法名必须是<code>getValue</code>。</li>
-<li><code>thisRef</code>是类型可以是任意类型，这个参数的表示那些类可以使用<code>by Delegation()</code>实现委托。比如我这里将类型修改为<code>Activity</code>类型，那么我就只能在Activity及其子类中委托给Delegation，并且可以通过<code>thisRef</code>拿到委托对象的所有公开方法和属性。而在<code>ByTest</code>类中使用就会报找不到方法的错误，无法通过编译。</li>
-<li><code>property</code>类型固定为<code>KProperty&lt;*&gt;</code></li>
-<li>返回值为委托属性的类型。</li>
-</ul>
-<p>当然也可以通过第二种方式来实现，实现<code>ReadOnlyProperty</code>接口来减少我们自己手写出错的概率。</p>
-<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 这是Kotlin的ReadOnlyProperty接口</span></span><br><span class="line"><span class="keyword">public</span> <span class="function"><span class="keyword">fun</span> <span class="keyword">interface</span> ReadOnlyProperty<span class="type">&lt;in T, out V&gt;</span> &#123;</span></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Returns the value of the property for the given object.</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> thisRef the object for which the value is requested.</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> property the metadata for the property.</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> the property value.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">operator</span> <span class="function"><span class="keyword">fun</span> <span class="title">getValue</span><span class="params">(thisRef: <span class="type">T</span>, property: <span class="type">KProperty</span>&lt;*&gt;)</span></span>: V</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 我们实现这个接口，并且重写getValue方法</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Delegation</span> : <span class="type">ReadOnlyProperty</span>&lt;<span class="type">Any?, Int</span>&gt; </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/** get委托 */</span></span><br><span class="line">    <span class="keyword">override</span> <span class="function"><span class="keyword">fun</span> <span class="title">getValue</span><span class="params">(thisRef: <span class="type">Any</span>?, property: <span class="type">KProperty</span>&lt;*&gt;)</span></span>: <span class="built_in">Int</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>其实这两种实现方法本质上是一样的，看个人喜好都可以。刚才我们说了<code>get</code>方法的委托，那么<code>set</code>方法呢？<code>set</code>实现和<code>get</code>基本一致。除此之外，我们还要明确的一个事就是属性委托必须实现的就是get，set是一个可选实现。这也对应了我们的val或者var属性。<code>set</code>方法实现如下：</p>
-<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Delegation</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">var</span> mValue: <span class="built_in">Int</span> = <span class="number">0</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/** get委托 */</span></span><br><span class="line">    <span class="keyword">operator</span> <span class="function"><span class="keyword">fun</span> <span class="title">getValue</span><span class="params">(thisRef: <span class="type">Any</span>?, property: <span class="type">KProperty</span>&lt;*&gt;)</span></span>: <span class="built_in">Int</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> mValue</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/** set委托 */</span></span><br><span class="line">    <span class="keyword">operator</span> <span class="function"><span class="keyword">fun</span> <span class="title">setValue</span><span class="params">(thisRef: <span class="type">Any</span>?, property: <span class="type">KProperty</span>&lt;*&gt;, value: <span class="type">Int</span>)</span></span> &#123;</span><br><span class="line">        mValue = value</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>同样的，也有对应的接口<code>ReadWriteProperty</code>可以实现，这里就不贴代码了。我们对比<code>get</code>方法，我们发现只是将返回值改到了入参的位置，其他并无要求。你可以按照上述的任意一种方式实现属性委托，这样在对属性进行取值/赋值操作的时候就会直接调用委托类的<code>getValue</code>和<code>setValue</code>方法，而且是<strong>每次都会调用</strong>。</p>
-<p>　　我们知道，对于android来说，kotlin最后会转换成字节码给虚拟机调用。难道java也新增了这个语法？不对吧，我们看看底层是怎么去实现的。对<code>ByTest</code>的字节码进行反编译看看：</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">final</span> <span class="class"><span class="keyword">class</span> <span class="title">ByTest</span> </span>&#123;</span><br><span class="line">   <span class="comment">// $FF: synthetic field</span></span><br><span class="line">   <span class="keyword">static</span> <span class="keyword">final</span> KProperty[] $$delegatedProperties = <span class="keyword">new</span> KProperty[]&#123;(KProperty)Reflection.mutableProperty1(<span class="keyword">new</span> MutablePropertyReference1Impl(ByTest.class, &quot;param&quot;, &quot;getParam()I&quot;, <span class="number">0</span>))&#125;;</span><br><span class="line">   <span class="keyword">private</span> <span class="keyword">final</span> Delegation param$delegate = <span class="keyword">new</span> Delegation();</span><br><span class="line"></span><br><span class="line">   <span class="function"><span class="keyword">private</span> <span class="keyword">final</span> <span class="keyword">int</span> <span class="title">getParam</span><span class="params">()</span> </span>&#123;</span><br><span class="line">      <span class="keyword">return</span> <span class="keyword">this</span>.param$delegate.getValue(<span class="keyword">this</span>, $$delegatedProperties[<span class="number">0</span>]);</span><br><span class="line">   &#125;</span><br><span class="line"></span><br><span class="line">   <span class="function"><span class="keyword">private</span> <span class="keyword">final</span> <span class="keyword">void</span> <span class="title">setParam</span><span class="params">(<span class="keyword">int</span> var1)</span> </span>&#123;</span><br><span class="line">      <span class="keyword">this</span>.param$delegate.setValue(<span class="keyword">this</span>, $$delegatedProperties[<span class="number">0</span>], var1);</span><br><span class="line">   &#125;</span><br><span class="line"></span><br><span class="line">   <span class="function"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">void</span> <span class="title">method</span><span class="params">()</span> </span>&#123;</span><br><span class="line">      String var1 = String.valueOf(<span class="keyword">this</span>.getParam());</span><br><span class="line">      System.out.println(var1);</span><br><span class="line">   &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>哦哟，原来就是先创建一个委托类对象，然后取值/赋值就调用委托类对象的的<code>getValue</code>和<code>setValue</code>方法。就干了个简简单单的事嘛！还以为是什么了不得东西呢。</p>
-<p>　　上面说的就是标标准准的属性委托，因为我们大多数的时候都是按照这样去实现。它的使用场景也很多，举个栗子：我们使用Intent在Activity中传递数据我们改用下面这种形式来简化取值操作：</p>
-<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 委托类</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">IntentExtraDelegation</span>&lt;<span class="type">T : Any</span>&gt;</span>(</span><br><span class="line">    <span class="comment">/** 获取intent中值的key */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">val</span> key: String,</span><br><span class="line">    <span class="comment">/** 默认值 */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">var</span> defaultValue: T</span><br><span class="line">) : ReadWriteProperty&lt;Activity, T&gt; &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">var</span> isGetEnd = <span class="literal">false</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">override</span> <span class="function"><span class="keyword">fun</span> <span class="title">getValue</span><span class="params">(thisRef: <span class="type">Activity</span>, property: <span class="type">KProperty</span>&lt;*&gt;)</span></span>: T &#123;</span><br><span class="line">        <span class="keyword">if</span> (isGetEnd) <span class="keyword">return</span> defaultValue</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Suppress(<span class="meta-string">&quot;UNCHECKED_CAST&quot;</span>)</span></span><br><span class="line">        defaultValue = thisRef.intent.extras?.<span class="keyword">get</span>(key) <span class="keyword">as</span>? T ?: defaultValue</span><br><span class="line">        isGetEnd = <span class="literal">true</span></span><br><span class="line">        <span class="keyword">return</span> defaultValue</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">override</span> <span class="function"><span class="keyword">fun</span> <span class="title">setValue</span><span class="params">(thisRef: <span class="type">Activity</span>, property: <span class="type">KProperty</span>&lt;*&gt;, value: <span class="type">T</span>)</span></span> &#123;</span><br><span class="line">        defaultValue = value</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 在Activity中使用</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">XxxActivity</span> : <span class="type">AppCompatActivity</span></span>() &#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">val</span> value <span class="keyword">by</span> IntentExtraDelegation(<span class="string">&quot;name&quot;</span>, <span class="string">&quot;Jerry&quot;</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>这样我们在获取intent传递的值的时候就简单很多。<code>by</code>关键字还可以在方法的内部使用，不过需要注意的是在方法内部使用时，<strong>委托的方法第一个入参是null，我们需要将第一个入参改为可空类型</strong>。相信看到这里，你已经掌握了属性委托。那么我们看看除此之外的另外几种标准委托。</p>
-<h4 id="直接委托"><a href="#直接委托" class="headerlink" title="直接委托"></a>直接委托</h4><p>　　直接委托就是将一个属性的<code>get/set</code>方法直接委托给另一个属性：</p>
-<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ByTest</span> </span>&#123;</span><br><span class="line">    <span class="keyword">var</span> oldValue: <span class="built_in">Int</span> = <span class="number">0</span></span><br><span class="line">    <span class="keyword">var</span> value: <span class="built_in">Int</span> <span class="keyword">by</span> ::oldValue</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>这种委托，对value就行操作时会同时修改<code>oldValue</code>的值，因为从本质上来说就是调用了<code>oldValue</code>的<code>set</code>方法。看着好像确实没什么用，不过也有它的使用场景，比如说可见性封装：</p>
-<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ByTest</span> </span>&#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">var</span> _data: MutableList&lt;String&gt; = mutableListOf()</span><br><span class="line">    <span class="keyword">val</span> <span class="keyword">data</span>: List&lt;String&gt; <span class="keyword">by</span> ::_data</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>对外屏蔽了数据操作，提供只读访问。</p>
-<h4 id="Delegates"><a href="#Delegates" class="headerlink" title="Delegates"></a>Delegates</h4><p>　　Kotlin提供了一个<code>Delegates</code>类，这个类可以提供一些委托的实现，比如观察属性变化，通过查看源码(源码也只有几十行，完全值得看一看)，也就是标准委托加回调实现：</p>
-<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ByTest</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">var</span> name: String <span class="keyword">by</span> Delegates.observable(<span class="string">&quot;初始值&quot;</span>) &#123; property, oldValue, newValue -&gt;</span><br><span class="line">        println(<span class="string">&quot;property = <span class="variable">$property</span> oldValue = <span class="variable">$oldValue</span> newValue = <span class="variable">$newValue</span>&quot;</span>)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>Delegates类还提供了<code>Delegates.notNull()</code>和<code>Delegates.vetoable()</code>方法，感兴趣可以自己查看用法。</p>
-<h4 id="属性映射"><a href="#属性映射" class="headerlink" title="属性映射"></a>属性映射</h4><p>　　属性映射也算是kotlin的一个语法：</p>
-<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ByTest</span></span>(map: HashMap&lt;String, Any&gt;) &#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 通过key和属性名一致来映射</span></span><br><span class="line">    <span class="keyword">val</span> name: String <span class="keyword">by</span> map</span><br><span class="line">    <span class="keyword">val</span> value: <span class="built_in">Int</span> <span class="keyword">by</span> map</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>为什么可以这样呢？因为Map它也实现了<code>getValue</code>方法，想不到吧！</p>
-<h4 id="by-lazy"><a href="#by-lazy" class="headerlink" title="by lazy"></a>by lazy</h4><p>　　首先需要明确的一点是，只有<code>by</code>才kotlin的关键字，<code>lazy</code>只是一个高阶函数。<code>by lazy</code>只能对<strong>被val修饰属性使用</strong>。lazy是将传入的初始化函数（即Lambda表达式）包装成为一个Lazy类，这个Lazy类就是一个委托对象(它实现了<code>getValue</code>方法)，直到第一次访问(使用)它，它才会去执行初始化的函数并记录和返回结果。很简单嘛，减少资源的占用。之后再次调用只返回之前记录的结果。也就是说初始化函数只会执行一次，并且是线程安全的。</p>
-<p>　　应用场景也有很多，比如这样：</p>
-<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ByTest</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">var</span> _context: Context? = <span class="literal">null</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">val</span> context: Context</span><br><span class="line">        <span class="keyword">get</span>() &#123;</span><br><span class="line">            <span class="keyword">if</span> (_context == <span class="literal">null</span>) &#123;</span><br><span class="line">                _context = initContext()</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">return</span> _context!!</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 改用by lazy</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ByTest</span> </span>&#123;</span><br><span class="line">    <span class="keyword">val</span> context <span class="keyword">by</span> lazy &#123; initContext() &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>改用<code>by lazy</code>之后语义简洁明了，上上之选嘛。</p>
-<h4 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h4><p>　　属性委托使用非常的广泛，你可以借助它实现数据和View绑定等。即使你完全不使用这些东西，仍然可以通过其他方式去实现完全一样的效果，但是你不能不会。不用和不会完全是两个概念。</p>
-<h3 id="类委托"><a href="#类委托" class="headerlink" title="类委托"></a>类委托</h3><p>　　那么类委托又是什么呢？三句话说完：</p>
-<ol>
-<li>委托只能对接口(方法)进行委托，不能对类。</li>
-<li>类委托不局限于单一的接口。</li>
-<li>如果被委托的类实现了接口的成员，则调用被委托的类重写成员时，调用的则是被委托的类重写的成员，而不会委托给委托类实现。</li>
-</ol>
-<p>　　我们观察上面介绍的属性委托，不难发现，属性委托不管是那种方式，都是通过委托<code>get/set</code>方法实现的。第一点对于属性委托也是一样的，也好理解。剩下的两句是什么意思呢？举个例子：我们现在要使用一个Map存储数据，并且能够得到最后一次放入的key和value。我们可以这样写：</p>
-<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ByTestMap</span> : <span class="type">MutableMap</span>&lt;<span class="type">String, String</span>&gt; </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">val</span> mMap = HashMap&lt;String, String&gt;()</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">var</span> lastKey: String? = <span class="literal">null</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">var</span> lastValue: String? = <span class="literal">null</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">override</span> <span class="function"><span class="keyword">fun</span> <span class="title">put</span><span class="params">(key: <span class="type">String</span>, value: <span class="type">String</span>)</span></span>: String? &#123;</span><br><span class="line">        <span class="keyword">this</span>.lastKey = key</span><br><span class="line">        <span class="keyword">this</span>.lastValue = value</span><br><span class="line">        <span class="keyword">return</span> mMap.put(key, value)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">override</span> <span class="keyword">operator</span> <span class="function"><span class="keyword">fun</span> <span class="title">get</span><span class="params">(key: <span class="type">String</span>)</span></span> = mMap[key]</span><br><span class="line">    <span class="comment">// 其他未实现的方法也通过调用mMap对应的方法，实现了一堆方法。</span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">fun</span> <span class="title">getLastKey</span><span class="params">()</span></span> = lastKey</span><br><span class="line">    <span class="function"><span class="keyword">fun</span> <span class="title">getLastValue</span><span class="params">()</span></span> = lastValue</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 调用者</span></span><br><span class="line"><span class="function"><span class="keyword">fun</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line">    <span class="keyword">val</span> map = ByTestMap()</span><br><span class="line">    map.put(<span class="string">&quot;key&quot;</span>, <span class="string">&quot;value&quot;</span>)</span><br><span class="line">    map.getLastKey()</span><br><span class="line">    map.getLastValue()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>我们现在确实实现了这样的一个功能，但是我们重写了一大堆方法，可是我们真正有用的也只有<code>put</code>方法，那如果一个接口有几十上百个抽象方法我们不是直接麻掉？我们这个时候就可以用类委托来实现：</p>
-<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ByTestMap</span></span>(<span class="keyword">private</span> <span class="keyword">val</span> mMap: MutableMap&lt;String, String&gt;) : MutableMap&lt;String, String&gt; <span class="keyword">by</span> mMap &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">var</span> lastKey: String? = <span class="literal">null</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">var</span> lastValue: String? = <span class="literal">null</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">override</span> <span class="function"><span class="keyword">fun</span> <span class="title">put</span><span class="params">(key: <span class="type">String</span>, value: <span class="type">String</span>)</span></span>: String? &#123;</span><br><span class="line">        <span class="keyword">this</span>.lastKey = key</span><br><span class="line">        <span class="keyword">this</span>.lastValue = value</span><br><span class="line">        <span class="keyword">return</span> mMap.put(key, value)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">fun</span> <span class="title">getLastKey</span><span class="params">()</span></span> = lastKey</span><br><span class="line">    <span class="function"><span class="keyword">fun</span> <span class="title">getLastValue</span><span class="params">()</span></span> = lastValue</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 调用者</span></span><br><span class="line"><span class="function"><span class="keyword">fun</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line">    <span class="keyword">val</span> map = ByTestMap(HashMap())</span><br><span class="line">    map.put(<span class="string">&quot;key&quot;</span>, <span class="string">&quot;value&quot;</span>)</span><br><span class="line">    map.getLastKey()</span><br><span class="line">    map.getLastValue()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>对于我们来说只需要重写put方法就能实现我们的需求，所以我们只用重写<code>put</code>就可以了。</p>
-<p>　　按照这个代码来解释一下上面的概念。<strong>委托只能对接口进行委托，不能对类</strong>：这个很好理解，就是委托的始终都是方法。<strong>类委托不局限于单一的接口</strong>：这个很好理解吧！不多逼逼。<strong>如果被委托的类实现了接口的成员，则调用被委托的类重写成员时，调用的则是被委托的类重写的成员，而不会委托给委托类实现</strong>：现在我们的<code>ByTestMap</code>就是一个被委托的类，并且我们只重写了<code>put</code>方法,  当调用者调用<code>put</code>方法时的调用的是我们重写过后的<code>put</code>方法。当调用<code>get</code>/<code>containsKey</code>/<code>remove</code>等我们没有重写的方法，那么就会调用<code>mMap</code>的对应方法。</p>
-<p>　　类委托简简单单嘛！实现原理呢就是编译成我们类委托一开始写得代码，emm…。</p>
-<h4 id="多个类委托"><a href="#多个类委托" class="headerlink" title="多个类委托"></a>多个类委托</h4><p>　　如果理解了类委托，多个类委托不也是手拿把掐。我说一下语法格式就行。</p>
-<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">interface</span> <span class="title">A</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">fun</span> <span class="title">a</span><span class="params">()</span></span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">interface</span> <span class="title">B</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">fun</span> <span class="title">b</span><span class="params">()</span></span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">C</span></span>(</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">val</span> a: A,</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">val</span> b: B</span><br><span class="line">) : A <span class="keyword">by</span> a, B <span class="keyword">by</span> b &#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>如果<code>A</code>和<code>B</code>有一模一样的方法呢，就需要在<code>C</code>中自己去实现这个方法就OK了。类委托呢，就这点东西，也不难。</p>
-]]></content>
-      <categories>
-        <category>Kotlin</category>
-      </categories>
-      <tags>
-        <tag>关键字</tag>
-        <tag>Kotlin</tag>
       </tags>
   </entry>
   <entry>
@@ -565,123 +483,85 @@
       </tags>
   </entry>
   <entry>
-    <title>Git的使用和基本原理</title>
-    <url>/2021/03/14/Git/</url>
-    <content><![CDATA[<h3 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h3><p>　　版本控制系统<code>VCS(Version Control System)</code>，是一种用于管理控制代码版本的工具系统，通过该种系统能够实现对代码的追踪维护等功能。目前在使用的主流系统中，主要有以下两种：</p>
+    <title>Kotlin中的委托</title>
+    <url>/2023/02/08/Delegation/</url>
+    <content><![CDATA[<h3 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h3><p>　　见名知意，委托就是把工作委托/委派给另一个对象去处理，对象本身不会去做这个工作。相较于Java，这是Kotlin中引入的新的语法：<strong>委托</strong>，通过<code>by</code>关键字来使用。在kotlin当中，委托主要分为两种，分别是<strong>属性委托</strong>和<strong>类委托</strong>。</p>
+<h3 id="属性委托"><a href="#属性委托" class="headerlink" title="属性委托"></a>属性委托</h3><p>　　属性也就是变量，在kotlin中声明一个变量的时候会为这个变量添加<code>get</code>和<code>set</code>方法。而属性委托就是将<code>get</code>和<code>set</code>委托给一个第三方实现。这个时候我们就可以按照语法格式：<code>val/var &lt;属性名&gt;: &lt;类型&gt; by &lt;表达式&gt;</code>来声明一个委托属性，因为kotlin语法的特性，这里的<code>&lt;类型&gt;</code>是可以省略的，由kotlin进行类型推定。举个例子：</p>
+<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ByTest</span> </span>&#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">val</span> param: <span class="built_in">Int</span> <span class="keyword">by</span> Delegate()</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">fun</span> <span class="title">method</span><span class="params">()</span></span> &#123;</span><br><span class="line">        println(param.toString())</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>　　因为<code>val</code>只有<code>get</code>方法，所以我们只需要把<code>param</code>的<code>get</code>方法委托给<code>Delegation</code>类来处理。这个时候我们需要在<code>Delegation</code>中去实现被委托的方法。有两种方式来实现，第一种方式就是纯手写：</p>
+<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Delegation</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/** get委托 */</span></span><br><span class="line">    <span class="keyword">operator</span> <span class="function"><span class="keyword">fun</span> <span class="title">getValue</span><span class="params">(thisRef: <span class="type">Any</span>?, property: <span class="type">KProperty</span>&lt;*&gt;)</span></span>: <span class="built_in">Int</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>实现委托的规则只有简简单单的几点要求。</p>
 <ul>
-<li><strong>集中化的版本控制系统(Centralized Version Control Systems，简称 CVCS)</strong></li>
+<li>方法必须被<code>operator</code>修饰，这个关键字是操作符重载。</li>
+<li>方法名必须是<code>getValue</code>。</li>
+<li><code>thisRef</code>是类型可以是任意类型，这个参数的表示那些类可以使用<code>by Delegation()</code>实现委托。比如我这里将类型修改为<code>Activity</code>类型，那么我就只能在Activity及其子类中委托给Delegation，并且可以通过<code>thisRef</code>拿到委托对象的所有公开方法和属性。而在<code>ByTest</code>类中使用就会报找不到方法的错误，无法通过编译。</li>
+<li><code>property</code>类型固定为<code>KProperty&lt;*&gt;</code></li>
+<li>返回值为委托属性的类型。</li>
 </ul>
-<p>　　该类系统的主要的运作流程是，由单一的服务器承担中央仓库的角色，保存代码修订的所有版本及记录。然后各个协同人员通过拉取和推送代码进行协作开发，协同人员本地只需要留存需要修改的指定代码版本。这种做法对于早期靠着本地数据库维护的代码版本控制系统来说，管理员能更加清晰的了解到协同开发人员每次的修改及对他们的权限控制。当然，这样的系统也是存在一些致命的弱点的，单一的服务器作为最主要的角色，一旦出现了问题，那么所有连接服务器的客户端都无法提交或者更新代码，如果更严重一些，服务器的磁盘出了问题，整个工程的代码及代码历史都会丢失。国内一般使用是的 <code>SVN</code>，现在依然有一些企业使用的是这种管理工具。</p>
-<ul>
-<li><strong>分布化的版本控制系统(Distributed Version Control System，简称 DVCS)</strong></li>
-</ul>
-<p>　　为了解决集中化的版本控制系统所存在的隐患问题，分布式的版本控制系统就面世了，如<code>Git、Mercurial、Bazaar 以及 Darcs</code>等。其最明显与集中化系统的区别就是，在分布式的系统中，每一个客户端都保存有完整的修订历史记录的快照。这样每次代码修改的操作，都是其他客户端进行了一些代码仓库快照的备份，当某一个仓库出现问题时，可以通过其他仓库的完整记录来进行恢复。这里可能有一个疑问，就是每个客户端都保存有完整的修改历史仓库，那每一份仓库会不会都很大，对各个协同的人员来说，同步与备份或者本地的存储等有一定的压力。事实上，除去资源文件，代码的修订记录的大小是很可观的，同时，<code>git</code>中也针对这些进行了一定的优化，在同步与本地的存储上，实际使用的体验的还是很可观的。所以，如果项目中的资源文件较大时，依然可以考虑使用中央式的版本控制系统来进行管理。</p>
-<h3 id="基本概念"><a href="#基本概念" class="headerlink" title="基本概念"></a>基本概念</h3><p>　　一般来说，开始使用<code>git</code>的场景分为从远程服务器克隆已存在的项目和开始新项目，初始化仓库。前者直接使用<code>git clone XXXXX(远程仓库地址)</code>就可以将远端的仓库完整的拷贝到本地。</p>
-<p><img src="https://i.loli.net/2021/03/14/FzLnCqGV3HK97sM.jpg" alt="克隆代码"></p>
-<p>　　不过从头开始初始化一个本地仓库，更容易去理解<code>git</code>的工作流程。命令<code>git init</code>可以将一个文件目录初始化为一个仓库， <code>git</code>会相应的生成一个<code>.git</code>的文件夹，这个文件夹就是 <strong>本地仓库（Local Repository）</strong>，这个文件夹中就会保存该目录中<strong>之后</strong>所有文件的改动记录，而这个目录在<code>git</code>中就被称为<code>工作区(Working Directory)</code>。</p>
-<p><img src="https://i.loli.net/2021/03/14/xnK7UeGZ5kfhaqr.png" alt="git初始化"></p>
-<p>　　除了<code>工作区</code>以外，<code>git</code>中还有<code>暂存区</code>。(注意：这里我是新建了一个文件夹，进行的初始化操作，如果新建的文件夹是刚刚克隆的<code>git</code>目录中，在已存在的仓库中再次<code>git init</code>一个仓库会不会有什么问题，答案是并不会，<code>git</code>中使用的是目录管理而不是设备管理，一个仓库只会对应的管理其对应的目录，不会相互影响)</p>
-<p><img src="https://i.loli.net/2021/03/14/SNioDXVbxvuayE6.png" alt="git工作流程"></p>
-<p>　　如上图，是<code>git</code>的一个基本的工作流程：当我们在工作区域中修改了某个文件的文件内容时，<code>git</code>会自动检测到这种改动并进行了标记，然后需要我们手动的将这些改动添加(使用命令 <code>git add</code>)到暂存区中，这样我们所修改的东西就会被<code>git</code>记录下来，而没有添加到暂存区的改动在进行各种<code>git</code>命令时可能会丢失（例如切换分支等。）。如果我们确定了暂存区中的内容是这样的修改，就可以将暂存区的改动记录进行提交，那么这次修改的内容就会从暂存区迁移到仓库中，并在仓库中生成一个提交记录–<code>commit</code>。整个仓库中，所有的改动记录就是有一个一个的<code>commit</code>串行所构成的。以下就是文件在不同的区域的一个时序图：</p>
-<p><img src="https://i.loli.net/2021/03/14/iyjF6OocCxg3bnM.jpg" alt="git时序图"></p>
-<p>　　这里的checkout可以将任意一次的<code>commit</code>代码拿出来作为一个工作区。然后进行修改。所以我们应当要求每一个<code>commit</code>都是可运行的，没有预期之外错误的一个代码结点。也应该要求commit时是要写好message。方便checkout和查找历史记录。</p>
-<p>回到我们刚刚克隆的仓库中，使用命令<code>git log</code>可以查看当前仓库的一些日志。这里我还贴在Android Studio中的查看方式。</p>
-<p><img src="https://i.loli.net/2021/03/14/duk2VIASaTpxyzg.png" alt="git日志-Android Studio"></p>
-<p><img src="https://i.loli.net/2021/03/14/3d71JykpGaFNo85.png" alt="git日志"></p>
-<p>　　分析图中出现的数据，就衍生出来 <code>git</code> 中的几个重要的概念：</p>
-<h4 id="引用"><a href="#引用" class="headerlink" title="引用"></a>引用</h4><p>　　简单来说，<code>git</code>中的引用就是指向某个<code>commit</code>的快捷方式，我们通过操作引用能够快速的操作到某个具体的<code>commit</code>，可以看到上图中的内容，记录中显示，远端仓库有多次<code>commit</code>，每一次的<code>commit</code>的后面跟着一串字符串，这个字符串是根据该<code>commit</code>计算出来的<code>SHA-1</code>值(一种算法计算出来的值，两个 <code>commit</code> 计算出来的值很少能重复)，<code>commit</code>将其作为唯一的标识。大多数时候，我们需要操作具体的某个<code>commit</code>时，可以直接使用该值的前几位来代表这个<code>commit</code>（一般来说是6-8位，github使用的是7位，Android Studio使用的8位），如</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">git checkout 9fb106</span><br></pre></td></tr></table></figure>
+<p>当然也可以通过第二种方式来实现，实现<code>ReadOnlyProperty</code>接口来减少我们自己手写出错的概率。</p>
+<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 这是Kotlin的ReadOnlyProperty接口</span></span><br><span class="line"><span class="keyword">public</span> <span class="function"><span class="keyword">fun</span> <span class="keyword">interface</span> ReadOnlyProperty<span class="type">&lt;in T, out V&gt;</span> &#123;</span></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Returns the value of the property for the given object.</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> thisRef the object for which the value is requested.</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> property the metadata for the property.</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> the property value.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">operator</span> <span class="function"><span class="keyword">fun</span> <span class="title">getValue</span><span class="params">(thisRef: <span class="type">T</span>, property: <span class="type">KProperty</span>&lt;*&gt;)</span></span>: V</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 我们实现这个接口，并且重写getValue方法</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Delegation</span> : <span class="type">ReadOnlyProperty</span>&lt;<span class="type">Any?, Int</span>&gt; </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/** get委托 */</span></span><br><span class="line">    <span class="keyword">override</span> <span class="function"><span class="keyword">fun</span> <span class="title">getValue</span><span class="params">(thisRef: <span class="type">Any</span>?, property: <span class="type">KProperty</span>&lt;*&gt;)</span></span>: <span class="built_in">Int</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<p>在Android Studio中直接右键<code>commit</code>然后选择checkout Revision就会签出选中的<code>commit</code>。</p>
-<h4 id="HEAD"><a href="#HEAD" class="headerlink" title="HEAD"></a>HEAD</h4><p>　　这个引用比较特殊，它指的是<strong>指向当前<code>commit</code>的引用</strong>，当我们从远端仓库拉取代码时或者<code>checkout</code>新的分支时，<code>HEAD</code>指向会随着我们的操作相应的修改，使得它始终指向的是当前<strong>工作区</strong>中对应的<code>commit</code>。</p>
-<h4 id="master"><a href="#master" class="headerlink" title="master"></a>master</h4><p>　　这个是<code>git</code>在创建时，默认生成的一个分支。大多数工程都将该分支作为主分支使用，在开发时，建立其他分支来开发工作，最后将完善的功能合并到主分支中。上图中的<code>origin/develop</code>代表的是远程仓库的<code>develop</code>分支。<code>HEAD</code>指向的<code>commit</code>是<code>9fb106</code>，值得一提的是，无论本地的<code>HEAD</code>如何修改，远程仓库中的<code>HEAD</code>永远指向的是<code>master</code>分支。</p>
-<h4 id="branch"><a href="#branch" class="headerlink" title="branch"></a>branch</h4><p>　　分支，既然有默认的分支，那也代表我们可以创建其他分支。其实，在整个<code>git</code>仓库中，是由一个个的分支构成，而分支由一个个的<code>commit</code>构成。形象一点说就是<code>git</code>仓库像一颗大树，<code>master</code>分支就是大树成长时的主干，慢慢随着长大，出现了许多的树枝，这些树枝就是我们自己新建的<code>branch</code>，而树枝上的树叶就是一个个<code>commit</code>。</p>
-<p>　　当<code>HEAD</code>指向某个<code>branch</code>时，其实<strong>间接的</strong>是指向这个<code>branch</code>的某个<code>commit</code>(之所以说是间接的指向，是因为这种情况下的<code>HEAD</code>还是直接指向的<code>branch</code>，而<code>branch</code>指向的是它最新的<code>commit</code>，这样构成了间接的指向。还有直接的指向，就是使用<code>git checkout --detach</code>命令后，<code>HEAD</code>就会由指向<code>branch</code>变成指向<code>commit</code>)。如下所示:</p>
-<p><img src="https://i.loli.net/2021/03/14/jJratZHKGBkTCN2.jpg" alt="git Head指向"></p>
-<p>　　<code>git checkout xxx</code>这个命令为 签出，使用该命令签出某个<code>commit</code>时，工作区的内容会替换为该<code>commit</code>，并同时将 <code>HEAD</code> 引用指向该<code>commit</code>，当签出命令为某个分支时，会签出该分支的最新的那个<code>commit</code>。<code>branch</code>的构成是一条从起始<code>commit</code>到该branch最新的<code>commit</code>的一条路径，它所包含的信息就是这条<code>commit</code>链上所有的<code>commit</code>。</p>
-<h3 id="基本流程中的操作"><a href="#基本流程中的操作" class="headerlink" title="基本流程中的操作"></a>基本流程中的操作</h3><h4 id="流程操作"><a href="#流程操作" class="headerlink" title="流程操作"></a>流程操作</h4><p>　　假设现在我们对于文件的修改已经完成。我们可以使用<code>git status</code>命令来查看当前的一些状态。git对修改的文件进行了标识，显示为红色的 modified，红色的意思是代表这些改动还没有被添加到暂存区中，也就是处于一种被标记了，但是没有被记录的状态。然后执行<code>git add .</code>，将修改添加到暂存区中，再次使用<code>git status</code>命令来查看。刚才被标记为红色的现在变成了绿色。表示本次改的被添加到了暂存区中。</p>
-<p>　　最后使用<code>git commit -m &quot;本次提交的描述&quot;</code>命令可以将暂存区中的改动记录提交到仓库中，<code>HEAD</code>也指向了刚刚提交的最新的<code>commit</code>。但是需要注意的是，我们提交的仓库是本地仓库。也就是只有我们自己知道本次修改，而其他人都不知道本次修改。为了让别人知道本次修改我们需要将它推到远端。但是正常情况下，我们其实并不知道远端是否有新的改动，所以一个比较保险的做法，先进行一次拉取操作<code>git pull</code>，这样如果远端有人提交了改动，我们就能先拉取合并。再把最后合并通过<code>git push</code>推到远端仓库。Android Studio可视化操作很简单就不多赘述。</p>
-<p>　　这算是一次比较顺利的工作流程，从本地修改文件，然后提交记录，再推送到远端进行了合并，以方便其他同事拉取你的修改。但是大多数情况下，并不会这么顺利，会产生比较多的冲突。</p>
-<h4 id="关于CLONE"><a href="#关于CLONE" class="headerlink" title="关于CLONE"></a>关于CLONE</h4><p>　　当我们使用<code>git clone</code>的命令时，<code>git</code>首先是将远程仓库的快照下载到本地。然后根据快照中的分支和<code>commit</code>去下载对应的<code>commit</code>。然后<code>git</code>会从第一个起点的<code>commit</code>开始，一个一个的应用<code>commit</code>链上的<code>commit</code>到工作区中，直到最新的那个<code>commit</code>被应用上。</p>
-<h4 id="关于-ADD"><a href="#关于-ADD" class="headerlink" title="关于 ADD"></a>关于 ADD</h4><p>　　刚刚的流程中使用了<code>add</code>命令，我使用的是<code>git add .</code>后面跟了一个<code>.</code>这个的意思是，<strong>全部暂存</strong>。如果你不想全部暂存，就需要把<code>.</code>替换成需要暂存的<strong>文件名</strong>。我们在工作区中，新增的文件，默认是不会被<code>git</code>所追踪的，也就说文件中任何的改动是不被<code>git</code>检测记录的。需要使用<code>git add</code>命令将文件添加，这样<code>git</code>才会开始追踪，所以新增一个文件时，使用<code>add</code>命令的含义其实有两层，一个将这个文件的新增作为工作区中的一种形式的改动，提交到<code>git</code>仓库中，第二层就是让文件被<code>git</code>所追踪。其他时候，当我们做出一些修改的时候，需要添加到暂存区中，也是使用此命令。</p>
-<p>　　需要注意的一点是，<code>git</code>中所记录的是文件内容的改动，而非文件本身，所以当添加了一次文件的修改后，又修改了相同文件的内容，还需要再添加一次刚刚的修改。如下操作：</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line"># 改动了文本的内容</span><br><span class="line"># ------------</span><br><span class="line"># 添加到暂存区</span><br><span class="line">git add . </span><br><span class="line"># 再次改动文本的内容</span><br><span class="line"># ------------</span><br><span class="line"># 注意这里还需要添加刚刚改动的内容到暂存区中</span><br><span class="line">git add .</span><br><span class="line"># 这样两次改动才会都被仓库记录</span><br></pre></td></tr></table></figure>
+<p>其实这两种实现方法本质上是一样的，看个人喜好都可以。刚才我们说了<code>get</code>方法的委托，那么<code>set</code>方法呢？<code>set</code>实现和<code>get</code>基本一致。除此之外，我们还要明确的一个事就是属性委托必须实现的就是get，set是一个可选实现。这也对应了我们的val或者var属性。<code>set</code>方法实现如下：</p>
+<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Delegation</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">var</span> mValue: <span class="built_in">Int</span> = <span class="number">0</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/** get委托 */</span></span><br><span class="line">    <span class="keyword">operator</span> <span class="function"><span class="keyword">fun</span> <span class="title">getValue</span><span class="params">(thisRef: <span class="type">Any</span>?, property: <span class="type">KProperty</span>&lt;*&gt;)</span></span>: <span class="built_in">Int</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> mValue</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/** set委托 */</span></span><br><span class="line">    <span class="keyword">operator</span> <span class="function"><span class="keyword">fun</span> <span class="title">setValue</span><span class="params">(thisRef: <span class="type">Any</span>?, property: <span class="type">KProperty</span>&lt;*&gt;, value: <span class="type">Int</span>)</span></span> &#123;</span><br><span class="line">        mValue = value</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<h4 id="关于-PULL"><a href="#关于-PULL" class="headerlink" title="关于 PULL"></a>关于 PULL</h4><p>　　<code>git pull</code>操作其实就做了两件事，先将远端的<code>commits</code>拉取到本地，然后进行一次合并操作。</p>
-<h4 id="关于-PUSH"><a href="#关于-PUSH" class="headerlink" title="关于 PUSH"></a>关于 PUSH</h4><p>　　刚刚的操作中，使用<code>git push</code>就将<code>master</code>分支上新的<code>commit</code>推到了远端仓库，与远端仓库的<code>master</code>分支进行了合并。这其实是一种粗略的说法，一笔带过了。</p>
-<p>　　<code>git push</code> 会将默认分支的本地提交记录上传到远程分支上进行合并，如果不指定的话，所更新的分支为<code>git config 中的 push.default的值对应的分支，这个值默认为:current</code> 其中的值<code>git config</code> 命令来进行修改， 进而改变 push 时的行为，详情查看<a href="https://git-scm.com/docs/git-config#git-config-pushdefault">git config</a>。如果需要提交记录的分支不是默认的分支，需要在命令中添加几个新的参数。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">git push origin target_feature</span><br></pre></td></tr></table></figure>
+<p>同样的，也有对应的接口<code>ReadWriteProperty</code>可以实现，这里就不贴代码了。我们对比<code>get</code>方法，我们发现只是将返回值改到了入参的位置，其他并无要求。你可以按照上述的任意一种方式实现属性委托，这样在对属性进行取值/赋值操作的时候就会直接调用委托类的<code>getValue</code>和<code>setValue</code>方法，而且是<strong>每次都会调用</strong>。</p>
+<p>　　我们知道，对于android来说，kotlin最后会转换成字节码给虚拟机调用。难道java也新增了这个语法？不对吧，我们看看底层是怎么去实现的。对<code>ByTest</code>的字节码进行反编译看看：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">final</span> <span class="class"><span class="keyword">class</span> <span class="title">ByTest</span> </span>&#123;</span><br><span class="line">   <span class="comment">// $FF: synthetic field</span></span><br><span class="line">   <span class="keyword">static</span> <span class="keyword">final</span> KProperty[] $$delegatedProperties = <span class="keyword">new</span> KProperty[]&#123;(KProperty)Reflection.mutableProperty1(<span class="keyword">new</span> MutablePropertyReference1Impl(ByTest.class, &quot;param&quot;, &quot;getParam()I&quot;, <span class="number">0</span>))&#125;;</span><br><span class="line">   <span class="keyword">private</span> <span class="keyword">final</span> Delegation param$delegate = <span class="keyword">new</span> Delegation();</span><br><span class="line"></span><br><span class="line">   <span class="function"><span class="keyword">private</span> <span class="keyword">final</span> <span class="keyword">int</span> <span class="title">getParam</span><span class="params">()</span> </span>&#123;</span><br><span class="line">      <span class="keyword">return</span> <span class="keyword">this</span>.param$delegate.getValue(<span class="keyword">this</span>, $$delegatedProperties[<span class="number">0</span>]);</span><br><span class="line">   &#125;</span><br><span class="line"></span><br><span class="line">   <span class="function"><span class="keyword">private</span> <span class="keyword">final</span> <span class="keyword">void</span> <span class="title">setParam</span><span class="params">(<span class="keyword">int</span> var1)</span> </span>&#123;</span><br><span class="line">      <span class="keyword">this</span>.param$delegate.setValue(<span class="keyword">this</span>, $$delegatedProperties[<span class="number">0</span>], var1);</span><br><span class="line">   &#125;</span><br><span class="line"></span><br><span class="line">   <span class="function"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">void</span> <span class="title">method</span><span class="params">()</span> </span>&#123;</span><br><span class="line">      String var1 = String.valueOf(<span class="keyword">this</span>.getParam());</span><br><span class="line">      System.out.println(var1);</span><br><span class="line">   &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<p>那么这次的 push 会推向远程分支的<code>target_feature</code>分支。</p>
-<p><strong>注意：push 时不会上传 HEAD 的指向，远程分支的 HEAD 永远指向的是 <code>master</code></strong></p>
-<h3 id="分支相关的操作"><a href="#分支相关的操作" class="headerlink" title="分支相关的操作"></a>分支相关的操作</h3><h4 id="分支的创建和删除"><a href="#分支的创建和删除" class="headerlink" title="分支的创建和删除"></a>分支的创建和删除</h4><ol>
-<li><p>创建 <code>branch</code> 的方式是 <code>git branch 名称</code> 或 <code>git checkout -b 名称</code>（创建后自动切换）；</p>
-</li>
-<li><p>切换的方式是 <code>git checkout 名称</code>；</p>
-</li>
-<li><p>删除的方式是 <code>git branch -d 名称</code>。</p>
-</li>
-</ol>
-<h4 id="分支的合并-Merge"><a href="#分支的合并-Merge" class="headerlink" title="分支的合并 Merge"></a>分支的合并 Merge</h4><p>　　多数情况下，我们需要将不同的分支的代码进行合并，那么就需要使用到<code>git merge</code>命令，该命令具体做的事情是：<strong>从目标 <code>commit</code> 和当前 <code>commit</code> （即 <code>HEAD</code>所指向的 <code>commit</code>）分叉的位置起，把目标 <code>commit</code> 的路径上的所有 <code>commit</code> 的内容一并应用到当前 <code>commit</code>，然后自动生成一个新的 <code>commit</code>。</strong>在合并时，最舒服的状态就是，新的分支的改动是领先于合并的分支的，这时候只需要将新分支的<code>commits</code>直接移过来，就完成了一次合并，在<code>git</code>中被叫做<code>fast-forward</code>。不过大多数时候，还是不那么舒服的。</p>
-<ul>
-<li><p><strong>解决冲突</strong></p>
-<p>　　同一文件，在不同的分支上都进行了改动，对于<code>git</code> 而言，可以分为良性情况和恶性情况(<code>git</code>中没有这个定义，只是为了理解)。什么是良性的呢，就是两次改动的地方不一样，比如有5行文本，<code>branch1</code>分支中改下了第4行，而<code>master</code>分支中修改了第3行，这样<code>git</code>就能知道两个分支改的东西不一样，就能自动合并，最后新生成的<code>commit</code>就是第3行和第4行都被修改了。对应来说，恶性的就是两个分支的改动，改了同一处地方，<code>git</code>并不知道哪个分支的改动才是我们想要的，所以最后的决定权交到了我们自己手里，这个时候就需要手动的处理冲突。<br>  　　<br>  　　在git中，对于这种冲突，会做一些明显的标识如下：</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&gt;&gt;&gt;&gt;&gt;&gt;&gt; HEAD</span><br><span class="line">第4行内容master分支的修改</span><br><span class="line">&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;</span><br><span class="line">第4行内容 branch1分支的修改</span><br><span class="line">&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt; branch1</span><br></pre></td></tr></table></figure>
+<p>哦哟，原来就是先创建一个委托类对象，然后取值/赋值就调用委托类对象的的<code>getValue</code>和<code>setValue</code>方法。就干了个简简单单的事嘛！还以为是什么了不得东西呢。</p>
+<p>　　上面说的就是标标准准的属性委托，因为我们大多数的时候都是按照这样去实现。它的使用场景也很多，举个栗子：我们使用Intent在Activity中传递数据我们改用下面这种形式来简化取值操作：</p>
+<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 委托类</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">IntentExtraDelegation</span>&lt;<span class="type">T : Any</span>&gt;</span>(</span><br><span class="line">    <span class="comment">/** 获取intent中值的key */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">val</span> key: String,</span><br><span class="line">    <span class="comment">/** 默认值 */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">var</span> defaultValue: T</span><br><span class="line">) : ReadWriteProperty&lt;Activity, T&gt; &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">var</span> isGetEnd = <span class="literal">false</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">override</span> <span class="function"><span class="keyword">fun</span> <span class="title">getValue</span><span class="params">(thisRef: <span class="type">Activity</span>, property: <span class="type">KProperty</span>&lt;*&gt;)</span></span>: T &#123;</span><br><span class="line">        <span class="keyword">if</span> (isGetEnd) <span class="keyword">return</span> defaultValue</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Suppress(<span class="meta-string">&quot;UNCHECKED_CAST&quot;</span>)</span></span><br><span class="line">        defaultValue = thisRef.intent.extras?.<span class="keyword">get</span>(key) <span class="keyword">as</span>? T ?: defaultValue</span><br><span class="line">        isGetEnd = <span class="literal">true</span></span><br><span class="line">        <span class="keyword">return</span> defaultValue</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">override</span> <span class="function"><span class="keyword">fun</span> <span class="title">setValue</span><span class="params">(thisRef: <span class="type">Activity</span>, property: <span class="type">KProperty</span>&lt;*&gt;, value: <span class="type">T</span>)</span></span> &#123;</span><br><span class="line">        defaultValue = value</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 在Activity中使用</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">XxxActivity</span> : <span class="type">AppCompatActivity</span></span>() &#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">val</span> value <span class="keyword">by</span> IntentExtraDelegation(<span class="string">&quot;name&quot;</span>, <span class="string">&quot;Jerry&quot;</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<p>这个很容易理解，上面的内容是<code>HEAD</code>所在的<code>master</code>分支的修改，下面的是    <code>branch1</code>分支的修改，我们根据具体的需求进行修改，删除<code>git</code>自动生成的<code>&gt;&gt;&gt;&gt;&gt;</code>和<code>======</code>。这算一次新的改动了，所以需要再次进行<code>add .</code>和<code>commit</code>。</p>
-</li>
-<li><p><strong>不解决冲突</strong></p>
-<p>上诉的操作代表正常处理了一次冲突，如果不需要处理，想要放弃。可以使用以下命令：</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">git merge --abort</span><br></pre></td></tr></table></figure>
+<p>这样我们在获取intent传递的值的时候就简单很多。<code>by</code>关键字还可以在方法的内部使用，不过需要注意的是在方法内部使用时，<strong>委托的方法第一个入参是null，我们需要将第一个入参改为可空类型</strong>。相信看到这里，你已经掌握了属性委托。那么我们看看除此之外的另外几种标准委托。</p>
+<h4 id="直接委托"><a href="#直接委托" class="headerlink" title="直接委托"></a>直接委托</h4><p>　　直接委托就是将一个属性的<code>get/set</code>方法直接委托给另一个属性：</p>
+<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ByTest</span> </span>&#123;</span><br><span class="line">    <span class="keyword">var</span> oldValue: <span class="built_in">Int</span> = <span class="number">0</span></span><br><span class="line">    <span class="keyword">var</span> value: <span class="built_in">Int</span> <span class="keyword">by</span> ::oldValue</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<p>之后便回到 <code>merge</code> 前的状态。如图所示，在合并时，产生了冲突，执行命令后，状态回到了<code>master</code>合并之前。</p>
-</li>
-</ul>
-<h3 id="进阶操作"><a href="#进阶操作" class="headerlink" title="进阶操作"></a>进阶操作</h3><h4 id="临时暂存"><a href="#临时暂存" class="headerlink" title="临时暂存"></a>临时暂存</h4><p>　　有时候，在不同分支工作时，需要偶尔切到其他分支看一行代码，或者调试个 BUG啥的，我们都是提交一个临时的<code>commit</code>再去切，这样算是一个保险的做法。还有更优雅一点的做法就是<code>git stash</code>命令，这个命令可以将目前工作区的改动都临时保存在一个独立的地方，等你搞好了其他的工作，再回来时，使用<code>git stash pop</code>就可以恢复了。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">git stash -u</span><br></pre></td></tr></table></figure>
+<p>这种委托，对value就行操作时会同时修改<code>oldValue</code>的值，因为从本质上来说就是调用了<code>oldValue</code>的<code>set</code>方法。看着好像确实没什么用，不过也有它的使用场景，比如说可见性封装：</p>
+<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ByTest</span> </span>&#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">var</span> _data: MutableList&lt;String&gt; = mutableListOf()</span><br><span class="line">    <span class="keyword">val</span> <span class="keyword">data</span>: List&lt;String&gt; <span class="keyword">by</span> ::_data</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<blockquote>
-<p>注意：没有被 track 的文件（即从来没有被 add 过的文件不会被 stash 起来，因为 Git 会忽略它们。如果想把这些文件也一起 stash，可以加上 <code>-u</code> 参数，它是 <code>--include-untracked</code> 的简写。</p>
-</blockquote>
-<p>在Android studio中这样操作：</p>
-<p><img src="https://i.loli.net/2021/03/14/fwmlEBuSV9WQqPc.png" alt="git缓存区"></p>
-<p>需要注意的是在pop时需要勾选<code>Pop stash</code>，否者你保存的stash会一直存在栈中。</p>
-<h4 id="Tag的使用"><a href="#Tag的使用" class="headerlink" title="Tag的使用"></a>Tag的使用</h4><p>　　<code>tag</code>就是标签，当我们在一个分支上构建了不同版本的应用时，可以通过<code>tag</code>来进行标记。这是一种基础的用法。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">git tag -a v1.0.0 -m &#39;xxx build version&#39;</span><br></pre></td></tr></table></figure>
+<p>对外屏蔽了数据操作，提供只读访问。</p>
+<h4 id="Delegates"><a href="#Delegates" class="headerlink" title="Delegates"></a>Delegates</h4><p>　　Kotlin提供了一个<code>Delegates</code>类，这个类可以提供一些委托的实现，比如观察属性变化，通过查看源码(源码也只有几十行，完全值得看一看)，也就是标准委托加回调实现：</p>
+<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ByTest</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">var</span> name: String <span class="keyword">by</span> Delegates.observable(<span class="string">&quot;初始值&quot;</span>) &#123; property, oldValue, newValue -&gt;</span><br><span class="line">        println(<span class="string">&quot;property = <span class="variable">$property</span> oldValue = <span class="variable">$oldValue</span> newValue = <span class="variable">$newValue</span>&quot;</span>)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<p>　　其实，<code>git</code> 的<code>tag</code>还可以用于自动化的构建和测试当中，本地打好了<code>tag</code>后，推送到远端仓库，在远端仓库中部署<code>CI</code>等自动化的脚本，可以检测到相应的<code>tag</code>来进行一系列的自动化操作。但是这个更多的是自动化构建方面的知识，有兴趣可以了解了解。</p>
-<blockquote>
-<p><a href="http://kescoode.com/travis-ci-android-github-release/"> 用TRAVIS CI给Android项目部署Github Release </a></p>
-</blockquote>
-<h4 id="恢复已删除的分支"><a href="#恢复已删除的分支" class="headerlink" title="恢复已删除的分支"></a>恢复已删除的分支</h4><p>　　有时候，不管有意无意，都可能误删了分支，<strong>一定要及时找回</strong>。操作步骤如下：</p>
+<p>Delegates类还提供了<code>Delegates.notNull()</code>和<code>Delegates.vetoable()</code>方法，感兴趣可以自己查看用法。</p>
+<h4 id="属性映射"><a href="#属性映射" class="headerlink" title="属性映射"></a>属性映射</h4><p>　　属性映射也算是kotlin的一个语法：</p>
+<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ByTest</span></span>(map: HashMap&lt;String, Any&gt;) &#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 通过key和属性名一致来映射</span></span><br><span class="line">    <span class="keyword">val</span> name: String <span class="keyword">by</span> map</span><br><span class="line">    <span class="keyword">val</span> value: <span class="built_in">Int</span> <span class="keyword">by</span> map</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>为什么可以这样呢？因为Map它也实现了<code>getValue</code>方法，想不到吧！</p>
+<h4 id="by-lazy"><a href="#by-lazy" class="headerlink" title="by lazy"></a>by lazy</h4><p>　　首先需要明确的一点是，只有<code>by</code>才kotlin的关键字，<code>lazy</code>只是一个高阶函数。<code>by lazy</code>只能对<strong>被val修饰属性使用</strong>。lazy是将传入的初始化函数（即Lambda表达式）包装成为一个Lazy类，这个Lazy类就是一个委托对象(它实现了<code>getValue</code>方法)，直到第一次访问(使用)它，它才会去执行初始化的函数并记录和返回结果。很简单嘛，减少资源的占用。之后再次调用只返回之前记录的结果。也就是说初始化函数只会执行一次，并且是线程安全的。</p>
+<p>　　应用场景也有很多，比如这样：</p>
+<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ByTest</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">var</span> _context: Context? = <span class="literal">null</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">val</span> context: Context</span><br><span class="line">        <span class="keyword">get</span>() &#123;</span><br><span class="line">            <span class="keyword">if</span> (_context == <span class="literal">null</span>) &#123;</span><br><span class="line">                _context = initContext()</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">return</span> _context!!</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 改用by lazy</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ByTest</span> </span>&#123;</span><br><span class="line">    <span class="keyword">val</span> context <span class="keyword">by</span> lazy &#123; initContext() &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>改用<code>by lazy</code>之后语义简洁明了，上上之选嘛。</p>
+<h4 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h4><p>　　属性委托使用非常的广泛，你可以借助它实现数据和View绑定等。即使你完全不使用这些东西，仍然可以通过其他方式去实现完全一样的效果，但是你不能不会。不用和不会完全是两个概念。</p>
+<h3 id="类委托"><a href="#类委托" class="headerlink" title="类委托"></a>类委托</h3><p>　　那么类委托又是什么呢？三句话说完：</p>
 <ol>
-<li><p>使用<code>git reflog</code>命令查看<code>HEAD</code>移动的相关记录，这个记录最新的在最上面，找到与<code>branch1</code>相关的记录，如图，找到最后一次从<code>branch1</code>移动到<code>master</code>的记录，那么这条记录之前的<code>commit</code>肯定是<code>branch1</code>上的一条<code>commit</code>。</p>
-<p><img src="https://i.loli.net/2021/03/14/obXlveiYwNpCQP8.png" alt="git历史commit"></p>
-</li>
-<li><p>签出这个<code>commit</code>，并在该<code>commit</code>上建立之前误删的分支即可。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">git checkout ec651f2</span><br></pre></td></tr></table></figure>
-
-<p>依然需要注意的一点：<code>git</code>会定期回收无引用的<code>commit</code>，所以这个操作需要及时。</p>
-</li>
+<li>委托只能对接口(方法)进行委托，不能对类。</li>
+<li>类委托不局限于单一的接口。</li>
+<li>如果被委托的类实现了接口的成员，则调用被委托的类重写成员时，调用的则是被委托的类重写的成员，而不会委托给委托类实现。</li>
 </ol>
-<h4 id="仅合并少数几个-commit"><a href="#仅合并少数几个-commit" class="headerlink" title="仅合并少数几个 commit"></a>仅合并少数几个 commit</h4><p>　　在实际工作开发中，会遵循标准的 Git Work flow，对待不同的功能，会切出不同的分支进行 开发，所以，基于什么基准分支切出来的功能分支进行 开发，这是一个很重要的问题。</p>
-<p>　　如果切错了基准分支，你会发现可能最终开发完成之后， merge 不回去了。或者需要将某个分支上的 commit 代码，移植到某个分支上面，就需要使用到 cherry-pick 这个 git 命令了。</p>
-<p>这个命令的用法如下：</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">git cherry-pick -x &lt;commit_id&gt;</span><br></pre></td></tr></table></figure>
+<p>　　我们观察上面介绍的属性委托，不难发现，属性委托不管是那种方式，都是通过委托<code>get/set</code>方法实现的。第一点对于属性委托也是一样的，也好理解。剩下的两句是什么意思呢？举个例子：我们现在要使用一个Map存储数据，并且能够得到最后一次放入的key和value。我们可以这样写：</p>
+<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ByTestMap</span> : <span class="type">MutableMap</span>&lt;<span class="type">String, String</span>&gt; </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">val</span> mMap = HashMap&lt;String, String&gt;()</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">var</span> lastKey: String? = <span class="literal">null</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">var</span> lastValue: String? = <span class="literal">null</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">override</span> <span class="function"><span class="keyword">fun</span> <span class="title">put</span><span class="params">(key: <span class="type">String</span>, value: <span class="type">String</span>)</span></span>: String? &#123;</span><br><span class="line">        <span class="keyword">this</span>.lastKey = key</span><br><span class="line">        <span class="keyword">this</span>.lastValue = value</span><br><span class="line">        <span class="keyword">return</span> mMap.put(key, value)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">override</span> <span class="keyword">operator</span> <span class="function"><span class="keyword">fun</span> <span class="title">get</span><span class="params">(key: <span class="type">String</span>)</span></span> = mMap[key]</span><br><span class="line">    <span class="comment">// 其他未实现的方法也通过调用mMap对应的方法，实现了一堆方法。</span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">fun</span> <span class="title">getLastKey</span><span class="params">()</span></span> = lastKey</span><br><span class="line">    <span class="function"><span class="keyword">fun</span> <span class="title">getLastValue</span><span class="params">()</span></span> = lastValue</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 调用者</span></span><br><span class="line"><span class="function"><span class="keyword">fun</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line">    <span class="keyword">val</span> map = ByTestMap()</span><br><span class="line">    map.put(<span class="string">&quot;key&quot;</span>, <span class="string">&quot;value&quot;</span>)</span><br><span class="line">    map.getLastKey()</span><br><span class="line">    map.getLastValue()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<p>其中<code>-x</code>的参数代表保留原提交者的信息，后面的<code>&lt;commit_id&gt;</code>的写法就是<code>&lt;start-commit-id&gt;…&lt;end-commit-id&gt;</code>这个代表一个从startCommitId到endCommitId的一个左开右闭的区别<code>(startId, endId]</code>，如果需要包含startId可以添加一个符号<code>&lt;start-commit-id&gt;^…&lt;end-commit-id&gt;</code>这样就是<code>[startId,endID]</code>的一个闭区间了。</p>
-<p>　　合并过程中，如果出现了冲突，就和普通冲突一样，手动的解决，然后添加提交，再执行git cherry-pick –continue就可以继续了，直到合并完成。</p>
-<blockquote>
-<p><a href="https://juejin.cn/post/6844903479421435918">Cherry-Pick | 一日一 Git</a></p>
-</blockquote>
-<h3 id="结束语"><a href="#结束语" class="headerlink" title="结束语"></a>结束语</h3><p>　　Git远比我想象的强大很多，也是在学习的时候才发现他拥有的功能很多，我所讲解的也只是冰山一角。还有诸如<strong>rebase 与 merge，修正已提交的 Commit(不是最新的也可以修改)，丢弃 commit(不是最新的也可以丢弃)，修改已经 Push 的 commit</strong>等许多我都没有讲到。后面学习又在记录这些。</p>
+<p>我们现在确实实现了这样的一个功能，但是我们重写了一大堆方法，可是我们真正有用的也只有<code>put</code>方法，那如果一个接口有几十上百个抽象方法我们不是直接麻掉？我们这个时候就可以用类委托来实现：</p>
+<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ByTestMap</span></span>(<span class="keyword">private</span> <span class="keyword">val</span> mMap: MutableMap&lt;String, String&gt;) : MutableMap&lt;String, String&gt; <span class="keyword">by</span> mMap &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">var</span> lastKey: String? = <span class="literal">null</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">var</span> lastValue: String? = <span class="literal">null</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">override</span> <span class="function"><span class="keyword">fun</span> <span class="title">put</span><span class="params">(key: <span class="type">String</span>, value: <span class="type">String</span>)</span></span>: String? &#123;</span><br><span class="line">        <span class="keyword">this</span>.lastKey = key</span><br><span class="line">        <span class="keyword">this</span>.lastValue = value</span><br><span class="line">        <span class="keyword">return</span> mMap.put(key, value)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">fun</span> <span class="title">getLastKey</span><span class="params">()</span></span> = lastKey</span><br><span class="line">    <span class="function"><span class="keyword">fun</span> <span class="title">getLastValue</span><span class="params">()</span></span> = lastValue</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 调用者</span></span><br><span class="line"><span class="function"><span class="keyword">fun</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line">    <span class="keyword">val</span> map = ByTestMap(HashMap())</span><br><span class="line">    map.put(<span class="string">&quot;key&quot;</span>, <span class="string">&quot;value&quot;</span>)</span><br><span class="line">    map.getLastKey()</span><br><span class="line">    map.getLastValue()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>对于我们来说只需要重写put方法就能实现我们的需求，所以我们只用重写<code>put</code>就可以了。</p>
+<p>　　按照这个代码来解释一下上面的概念。<strong>委托只能对接口进行委托，不能对类</strong>：这个很好理解，就是委托的始终都是方法。<strong>类委托不局限于单一的接口</strong>：这个很好理解吧！不多逼逼。<strong>如果被委托的类实现了接口的成员，则调用被委托的类重写成员时，调用的则是被委托的类重写的成员，而不会委托给委托类实现</strong>：现在我们的<code>ByTestMap</code>就是一个被委托的类，并且我们只重写了<code>put</code>方法,  当调用者调用<code>put</code>方法时的调用的是我们重写过后的<code>put</code>方法。当调用<code>get</code>/<code>containsKey</code>/<code>remove</code>等我们没有重写的方法，那么就会调用<code>mMap</code>的对应方法。</p>
+<p>　　类委托简简单单嘛！实现原理呢就是编译成我们类委托一开始写得代码，emm…。</p>
+<h4 id="多个类委托"><a href="#多个类委托" class="headerlink" title="多个类委托"></a>多个类委托</h4><p>　　如果理解了类委托，多个类委托不也是手拿把掐。我说一下语法格式就行。</p>
+<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">interface</span> <span class="title">A</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">fun</span> <span class="title">a</span><span class="params">()</span></span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">interface</span> <span class="title">B</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">fun</span> <span class="title">b</span><span class="params">()</span></span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">C</span></span>(</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">val</span> a: A,</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">val</span> b: B</span><br><span class="line">) : A <span class="keyword">by</span> a, B <span class="keyword">by</span> b &#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>如果<code>A</code>和<code>B</code>有一模一样的方法呢，就需要在<code>C</code>中自己去实现这个方法就OK了。类委托呢，就这点东西，也不难。</p>
 ]]></content>
       <categories>
-        <category>Android</category>
+        <category>Kotlin</category>
       </categories>
       <tags>
-        <tag>版本控制</tag>
-        <tag>Git</tag>
+        <tag>关键字</tag>
+        <tag>Kotlin</tag>
       </tags>
   </entry>
   <entry>
@@ -1008,6 +888,126 @@
       </tags>
   </entry>
   <entry>
+    <title>Git的使用和基本原理</title>
+    <url>/2021/03/14/Git/</url>
+    <content><![CDATA[<h3 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h3><p>　　版本控制系统<code>VCS(Version Control System)</code>，是一种用于管理控制代码版本的工具系统，通过该种系统能够实现对代码的追踪维护等功能。目前在使用的主流系统中，主要有以下两种：</p>
+<ul>
+<li><strong>集中化的版本控制系统(Centralized Version Control Systems，简称 CVCS)</strong></li>
+</ul>
+<p>　　该类系统的主要的运作流程是，由单一的服务器承担中央仓库的角色，保存代码修订的所有版本及记录。然后各个协同人员通过拉取和推送代码进行协作开发，协同人员本地只需要留存需要修改的指定代码版本。这种做法对于早期靠着本地数据库维护的代码版本控制系统来说，管理员能更加清晰的了解到协同开发人员每次的修改及对他们的权限控制。当然，这样的系统也是存在一些致命的弱点的，单一的服务器作为最主要的角色，一旦出现了问题，那么所有连接服务器的客户端都无法提交或者更新代码，如果更严重一些，服务器的磁盘出了问题，整个工程的代码及代码历史都会丢失。国内一般使用是的 <code>SVN</code>，现在依然有一些企业使用的是这种管理工具。</p>
+<ul>
+<li><strong>分布化的版本控制系统(Distributed Version Control System，简称 DVCS)</strong></li>
+</ul>
+<p>　　为了解决集中化的版本控制系统所存在的隐患问题，分布式的版本控制系统就面世了，如<code>Git、Mercurial、Bazaar 以及 Darcs</code>等。其最明显与集中化系统的区别就是，在分布式的系统中，每一个客户端都保存有完整的修订历史记录的快照。这样每次代码修改的操作，都是其他客户端进行了一些代码仓库快照的备份，当某一个仓库出现问题时，可以通过其他仓库的完整记录来进行恢复。这里可能有一个疑问，就是每个客户端都保存有完整的修改历史仓库，那每一份仓库会不会都很大，对各个协同的人员来说，同步与备份或者本地的存储等有一定的压力。事实上，除去资源文件，代码的修订记录的大小是很可观的，同时，<code>git</code>中也针对这些进行了一定的优化，在同步与本地的存储上，实际使用的体验的还是很可观的。所以，如果项目中的资源文件较大时，依然可以考虑使用中央式的版本控制系统来进行管理。</p>
+<h3 id="基本概念"><a href="#基本概念" class="headerlink" title="基本概念"></a>基本概念</h3><p>　　一般来说，开始使用<code>git</code>的场景分为从远程服务器克隆已存在的项目和开始新项目，初始化仓库。前者直接使用<code>git clone XXXXX(远程仓库地址)</code>就可以将远端的仓库完整的拷贝到本地。</p>
+<p><img src="https://i.loli.net/2021/03/14/FzLnCqGV3HK97sM.jpg" alt="克隆代码"></p>
+<p>　　不过从头开始初始化一个本地仓库，更容易去理解<code>git</code>的工作流程。命令<code>git init</code>可以将一个文件目录初始化为一个仓库， <code>git</code>会相应的生成一个<code>.git</code>的文件夹，这个文件夹就是 <strong>本地仓库（Local Repository）</strong>，这个文件夹中就会保存该目录中<strong>之后</strong>所有文件的改动记录，而这个目录在<code>git</code>中就被称为<code>工作区(Working Directory)</code>。</p>
+<p><img src="https://i.loli.net/2021/03/14/xnK7UeGZ5kfhaqr.png" alt="git初始化"></p>
+<p>　　除了<code>工作区</code>以外，<code>git</code>中还有<code>暂存区</code>。(注意：这里我是新建了一个文件夹，进行的初始化操作，如果新建的文件夹是刚刚克隆的<code>git</code>目录中，在已存在的仓库中再次<code>git init</code>一个仓库会不会有什么问题，答案是并不会，<code>git</code>中使用的是目录管理而不是设备管理，一个仓库只会对应的管理其对应的目录，不会相互影响)</p>
+<p><img src="https://i.loli.net/2021/03/14/SNioDXVbxvuayE6.png" alt="git工作流程"></p>
+<p>　　如上图，是<code>git</code>的一个基本的工作流程：当我们在工作区域中修改了某个文件的文件内容时，<code>git</code>会自动检测到这种改动并进行了标记，然后需要我们手动的将这些改动添加(使用命令 <code>git add</code>)到暂存区中，这样我们所修改的东西就会被<code>git</code>记录下来，而没有添加到暂存区的改动在进行各种<code>git</code>命令时可能会丢失（例如切换分支等。）。如果我们确定了暂存区中的内容是这样的修改，就可以将暂存区的改动记录进行提交，那么这次修改的内容就会从暂存区迁移到仓库中，并在仓库中生成一个提交记录–<code>commit</code>。整个仓库中，所有的改动记录就是有一个一个的<code>commit</code>串行所构成的。以下就是文件在不同的区域的一个时序图：</p>
+<p><img src="https://i.loli.net/2021/03/14/iyjF6OocCxg3bnM.jpg" alt="git时序图"></p>
+<p>　　这里的checkout可以将任意一次的<code>commit</code>代码拿出来作为一个工作区。然后进行修改。所以我们应当要求每一个<code>commit</code>都是可运行的，没有预期之外错误的一个代码结点。也应该要求commit时是要写好message。方便checkout和查找历史记录。</p>
+<p>回到我们刚刚克隆的仓库中，使用命令<code>git log</code>可以查看当前仓库的一些日志。这里我还贴在Android Studio中的查看方式。</p>
+<p><img src="https://i.loli.net/2021/03/14/duk2VIASaTpxyzg.png" alt="git日志-Android Studio"></p>
+<p><img src="https://i.loli.net/2021/03/14/3d71JykpGaFNo85.png" alt="git日志"></p>
+<p>　　分析图中出现的数据，就衍生出来 <code>git</code> 中的几个重要的概念：</p>
+<h4 id="引用"><a href="#引用" class="headerlink" title="引用"></a>引用</h4><p>　　简单来说，<code>git</code>中的引用就是指向某个<code>commit</code>的快捷方式，我们通过操作引用能够快速的操作到某个具体的<code>commit</code>，可以看到上图中的内容，记录中显示，远端仓库有多次<code>commit</code>，每一次的<code>commit</code>的后面跟着一串字符串，这个字符串是根据该<code>commit</code>计算出来的<code>SHA-1</code>值(一种算法计算出来的值，两个 <code>commit</code> 计算出来的值很少能重复)，<code>commit</code>将其作为唯一的标识。大多数时候，我们需要操作具体的某个<code>commit</code>时，可以直接使用该值的前几位来代表这个<code>commit</code>（一般来说是6-8位，github使用的是7位，Android Studio使用的8位），如</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">git checkout 9fb106</span><br></pre></td></tr></table></figure>
+
+<p>在Android Studio中直接右键<code>commit</code>然后选择checkout Revision就会签出选中的<code>commit</code>。</p>
+<h4 id="HEAD"><a href="#HEAD" class="headerlink" title="HEAD"></a>HEAD</h4><p>　　这个引用比较特殊，它指的是<strong>指向当前<code>commit</code>的引用</strong>，当我们从远端仓库拉取代码时或者<code>checkout</code>新的分支时，<code>HEAD</code>指向会随着我们的操作相应的修改，使得它始终指向的是当前<strong>工作区</strong>中对应的<code>commit</code>。</p>
+<h4 id="master"><a href="#master" class="headerlink" title="master"></a>master</h4><p>　　这个是<code>git</code>在创建时，默认生成的一个分支。大多数工程都将该分支作为主分支使用，在开发时，建立其他分支来开发工作，最后将完善的功能合并到主分支中。上图中的<code>origin/develop</code>代表的是远程仓库的<code>develop</code>分支。<code>HEAD</code>指向的<code>commit</code>是<code>9fb106</code>，值得一提的是，无论本地的<code>HEAD</code>如何修改，远程仓库中的<code>HEAD</code>永远指向的是<code>master</code>分支。</p>
+<h4 id="branch"><a href="#branch" class="headerlink" title="branch"></a>branch</h4><p>　　分支，既然有默认的分支，那也代表我们可以创建其他分支。其实，在整个<code>git</code>仓库中，是由一个个的分支构成，而分支由一个个的<code>commit</code>构成。形象一点说就是<code>git</code>仓库像一颗大树，<code>master</code>分支就是大树成长时的主干，慢慢随着长大，出现了许多的树枝，这些树枝就是我们自己新建的<code>branch</code>，而树枝上的树叶就是一个个<code>commit</code>。</p>
+<p>　　当<code>HEAD</code>指向某个<code>branch</code>时，其实<strong>间接的</strong>是指向这个<code>branch</code>的某个<code>commit</code>(之所以说是间接的指向，是因为这种情况下的<code>HEAD</code>还是直接指向的<code>branch</code>，而<code>branch</code>指向的是它最新的<code>commit</code>，这样构成了间接的指向。还有直接的指向，就是使用<code>git checkout --detach</code>命令后，<code>HEAD</code>就会由指向<code>branch</code>变成指向<code>commit</code>)。如下所示:</p>
+<p><img src="https://i.loli.net/2021/03/14/jJratZHKGBkTCN2.jpg" alt="git Head指向"></p>
+<p>　　<code>git checkout xxx</code>这个命令为 签出，使用该命令签出某个<code>commit</code>时，工作区的内容会替换为该<code>commit</code>，并同时将 <code>HEAD</code> 引用指向该<code>commit</code>，当签出命令为某个分支时，会签出该分支的最新的那个<code>commit</code>。<code>branch</code>的构成是一条从起始<code>commit</code>到该branch最新的<code>commit</code>的一条路径，它所包含的信息就是这条<code>commit</code>链上所有的<code>commit</code>。</p>
+<h3 id="基本流程中的操作"><a href="#基本流程中的操作" class="headerlink" title="基本流程中的操作"></a>基本流程中的操作</h3><h4 id="流程操作"><a href="#流程操作" class="headerlink" title="流程操作"></a>流程操作</h4><p>　　假设现在我们对于文件的修改已经完成。我们可以使用<code>git status</code>命令来查看当前的一些状态。git对修改的文件进行了标识，显示为红色的 modified，红色的意思是代表这些改动还没有被添加到暂存区中，也就是处于一种被标记了，但是没有被记录的状态。然后执行<code>git add .</code>，将修改添加到暂存区中，再次使用<code>git status</code>命令来查看。刚才被标记为红色的现在变成了绿色。表示本次改的被添加到了暂存区中。</p>
+<p>　　最后使用<code>git commit -m &quot;本次提交的描述&quot;</code>命令可以将暂存区中的改动记录提交到仓库中，<code>HEAD</code>也指向了刚刚提交的最新的<code>commit</code>。但是需要注意的是，我们提交的仓库是本地仓库。也就是只有我们自己知道本次修改，而其他人都不知道本次修改。为了让别人知道本次修改我们需要将它推到远端。但是正常情况下，我们其实并不知道远端是否有新的改动，所以一个比较保险的做法，先进行一次拉取操作<code>git pull</code>，这样如果远端有人提交了改动，我们就能先拉取合并。再把最后合并通过<code>git push</code>推到远端仓库。Android Studio可视化操作很简单就不多赘述。</p>
+<p>　　这算是一次比较顺利的工作流程，从本地修改文件，然后提交记录，再推送到远端进行了合并，以方便其他同事拉取你的修改。但是大多数情况下，并不会这么顺利，会产生比较多的冲突。</p>
+<h4 id="关于CLONE"><a href="#关于CLONE" class="headerlink" title="关于CLONE"></a>关于CLONE</h4><p>　　当我们使用<code>git clone</code>的命令时，<code>git</code>首先是将远程仓库的快照下载到本地。然后根据快照中的分支和<code>commit</code>去下载对应的<code>commit</code>。然后<code>git</code>会从第一个起点的<code>commit</code>开始，一个一个的应用<code>commit</code>链上的<code>commit</code>到工作区中，直到最新的那个<code>commit</code>被应用上。</p>
+<h4 id="关于-ADD"><a href="#关于-ADD" class="headerlink" title="关于 ADD"></a>关于 ADD</h4><p>　　刚刚的流程中使用了<code>add</code>命令，我使用的是<code>git add .</code>后面跟了一个<code>.</code>这个的意思是，<strong>全部暂存</strong>。如果你不想全部暂存，就需要把<code>.</code>替换成需要暂存的<strong>文件名</strong>。我们在工作区中，新增的文件，默认是不会被<code>git</code>所追踪的，也就说文件中任何的改动是不被<code>git</code>检测记录的。需要使用<code>git add</code>命令将文件添加，这样<code>git</code>才会开始追踪，所以新增一个文件时，使用<code>add</code>命令的含义其实有两层，一个将这个文件的新增作为工作区中的一种形式的改动，提交到<code>git</code>仓库中，第二层就是让文件被<code>git</code>所追踪。其他时候，当我们做出一些修改的时候，需要添加到暂存区中，也是使用此命令。</p>
+<p>　　需要注意的一点是，<code>git</code>中所记录的是文件内容的改动，而非文件本身，所以当添加了一次文件的修改后，又修改了相同文件的内容，还需要再添加一次刚刚的修改。如下操作：</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line"># 改动了文本的内容</span><br><span class="line"># ------------</span><br><span class="line"># 添加到暂存区</span><br><span class="line">git add . </span><br><span class="line"># 再次改动文本的内容</span><br><span class="line"># ------------</span><br><span class="line"># 注意这里还需要添加刚刚改动的内容到暂存区中</span><br><span class="line">git add .</span><br><span class="line"># 这样两次改动才会都被仓库记录</span><br></pre></td></tr></table></figure>
+
+<h4 id="关于-PULL"><a href="#关于-PULL" class="headerlink" title="关于 PULL"></a>关于 PULL</h4><p>　　<code>git pull</code>操作其实就做了两件事，先将远端的<code>commits</code>拉取到本地，然后进行一次合并操作。</p>
+<h4 id="关于-PUSH"><a href="#关于-PUSH" class="headerlink" title="关于 PUSH"></a>关于 PUSH</h4><p>　　刚刚的操作中，使用<code>git push</code>就将<code>master</code>分支上新的<code>commit</code>推到了远端仓库，与远端仓库的<code>master</code>分支进行了合并。这其实是一种粗略的说法，一笔带过了。</p>
+<p>　　<code>git push</code> 会将默认分支的本地提交记录上传到远程分支上进行合并，如果不指定的话，所更新的分支为<code>git config 中的 push.default的值对应的分支，这个值默认为:current</code> 其中的值<code>git config</code> 命令来进行修改， 进而改变 push 时的行为，详情查看<a href="https://git-scm.com/docs/git-config#git-config-pushdefault">git config</a>。如果需要提交记录的分支不是默认的分支，需要在命令中添加几个新的参数。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">git push origin target_feature</span><br></pre></td></tr></table></figure>
+
+<p>那么这次的 push 会推向远程分支的<code>target_feature</code>分支。</p>
+<p><strong>注意：push 时不会上传 HEAD 的指向，远程分支的 HEAD 永远指向的是 <code>master</code></strong></p>
+<h3 id="分支相关的操作"><a href="#分支相关的操作" class="headerlink" title="分支相关的操作"></a>分支相关的操作</h3><h4 id="分支的创建和删除"><a href="#分支的创建和删除" class="headerlink" title="分支的创建和删除"></a>分支的创建和删除</h4><ol>
+<li><p>创建 <code>branch</code> 的方式是 <code>git branch 名称</code> 或 <code>git checkout -b 名称</code>（创建后自动切换）；</p>
+</li>
+<li><p>切换的方式是 <code>git checkout 名称</code>；</p>
+</li>
+<li><p>删除的方式是 <code>git branch -d 名称</code>。</p>
+</li>
+</ol>
+<h4 id="分支的合并-Merge"><a href="#分支的合并-Merge" class="headerlink" title="分支的合并 Merge"></a>分支的合并 Merge</h4><p>　　多数情况下，我们需要将不同的分支的代码进行合并，那么就需要使用到<code>git merge</code>命令，该命令具体做的事情是：<strong>从目标 <code>commit</code> 和当前 <code>commit</code> （即 <code>HEAD</code>所指向的 <code>commit</code>）分叉的位置起，把目标 <code>commit</code> 的路径上的所有 <code>commit</code> 的内容一并应用到当前 <code>commit</code>，然后自动生成一个新的 <code>commit</code>。</strong>在合并时，最舒服的状态就是，新的分支的改动是领先于合并的分支的，这时候只需要将新分支的<code>commits</code>直接移过来，就完成了一次合并，在<code>git</code>中被叫做<code>fast-forward</code>。不过大多数时候，还是不那么舒服的。</p>
+<ul>
+<li><p><strong>解决冲突</strong></p>
+<p>　　同一文件，在不同的分支上都进行了改动，对于<code>git</code> 而言，可以分为良性情况和恶性情况(<code>git</code>中没有这个定义，只是为了理解)。什么是良性的呢，就是两次改动的地方不一样，比如有5行文本，<code>branch1</code>分支中改下了第4行，而<code>master</code>分支中修改了第3行，这样<code>git</code>就能知道两个分支改的东西不一样，就能自动合并，最后新生成的<code>commit</code>就是第3行和第4行都被修改了。对应来说，恶性的就是两个分支的改动，改了同一处地方，<code>git</code>并不知道哪个分支的改动才是我们想要的，所以最后的决定权交到了我们自己手里，这个时候就需要手动的处理冲突。<br>  　　<br>  　　在git中，对于这种冲突，会做一些明显的标识如下：</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&gt;&gt;&gt;&gt;&gt;&gt;&gt; HEAD</span><br><span class="line">第4行内容master分支的修改</span><br><span class="line">&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;</span><br><span class="line">第4行内容 branch1分支的修改</span><br><span class="line">&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt; branch1</span><br></pre></td></tr></table></figure>
+
+<p>这个很容易理解，上面的内容是<code>HEAD</code>所在的<code>master</code>分支的修改，下面的是    <code>branch1</code>分支的修改，我们根据具体的需求进行修改，删除<code>git</code>自动生成的<code>&gt;&gt;&gt;&gt;&gt;</code>和<code>======</code>。这算一次新的改动了，所以需要再次进行<code>add .</code>和<code>commit</code>。</p>
+</li>
+<li><p><strong>不解决冲突</strong></p>
+<p>上诉的操作代表正常处理了一次冲突，如果不需要处理，想要放弃。可以使用以下命令：</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">git merge --abort</span><br></pre></td></tr></table></figure>
+
+<p>之后便回到 <code>merge</code> 前的状态。如图所示，在合并时，产生了冲突，执行命令后，状态回到了<code>master</code>合并之前。</p>
+</li>
+</ul>
+<h3 id="进阶操作"><a href="#进阶操作" class="headerlink" title="进阶操作"></a>进阶操作</h3><h4 id="临时暂存"><a href="#临时暂存" class="headerlink" title="临时暂存"></a>临时暂存</h4><p>　　有时候，在不同分支工作时，需要偶尔切到其他分支看一行代码，或者调试个 BUG啥的，我们都是提交一个临时的<code>commit</code>再去切，这样算是一个保险的做法。还有更优雅一点的做法就是<code>git stash</code>命令，这个命令可以将目前工作区的改动都临时保存在一个独立的地方，等你搞好了其他的工作，再回来时，使用<code>git stash pop</code>就可以恢复了。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">git stash -u</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>注意：没有被 track 的文件（即从来没有被 add 过的文件不会被 stash 起来，因为 Git 会忽略它们。如果想把这些文件也一起 stash，可以加上 <code>-u</code> 参数，它是 <code>--include-untracked</code> 的简写。</p>
+</blockquote>
+<p>在Android studio中这样操作：</p>
+<p><img src="https://i.loli.net/2021/03/14/fwmlEBuSV9WQqPc.png" alt="git缓存区"></p>
+<p>需要注意的是在pop时需要勾选<code>Pop stash</code>，否者你保存的stash会一直存在栈中。</p>
+<h4 id="Tag的使用"><a href="#Tag的使用" class="headerlink" title="Tag的使用"></a>Tag的使用</h4><p>　　<code>tag</code>就是标签，当我们在一个分支上构建了不同版本的应用时，可以通过<code>tag</code>来进行标记。这是一种基础的用法。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">git tag -a v1.0.0 -m &#39;xxx build version&#39;</span><br></pre></td></tr></table></figure>
+
+<p>　　其实，<code>git</code> 的<code>tag</code>还可以用于自动化的构建和测试当中，本地打好了<code>tag</code>后，推送到远端仓库，在远端仓库中部署<code>CI</code>等自动化的脚本，可以检测到相应的<code>tag</code>来进行一系列的自动化操作。但是这个更多的是自动化构建方面的知识，有兴趣可以了解了解。</p>
+<blockquote>
+<p><a href="http://kescoode.com/travis-ci-android-github-release/"> 用TRAVIS CI给Android项目部署Github Release </a></p>
+</blockquote>
+<h4 id="恢复已删除的分支"><a href="#恢复已删除的分支" class="headerlink" title="恢复已删除的分支"></a>恢复已删除的分支</h4><p>　　有时候，不管有意无意，都可能误删了分支，<strong>一定要及时找回</strong>。操作步骤如下：</p>
+<ol>
+<li><p>使用<code>git reflog</code>命令查看<code>HEAD</code>移动的相关记录，这个记录最新的在最上面，找到与<code>branch1</code>相关的记录，如图，找到最后一次从<code>branch1</code>移动到<code>master</code>的记录，那么这条记录之前的<code>commit</code>肯定是<code>branch1</code>上的一条<code>commit</code>。</p>
+<p><img src="https://i.loli.net/2021/03/14/obXlveiYwNpCQP8.png" alt="git历史commit"></p>
+</li>
+<li><p>签出这个<code>commit</code>，并在该<code>commit</code>上建立之前误删的分支即可。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">git checkout ec651f2</span><br></pre></td></tr></table></figure>
+
+<p>依然需要注意的一点：<code>git</code>会定期回收无引用的<code>commit</code>，所以这个操作需要及时。</p>
+</li>
+</ol>
+<h4 id="仅合并少数几个-commit"><a href="#仅合并少数几个-commit" class="headerlink" title="仅合并少数几个 commit"></a>仅合并少数几个 commit</h4><p>　　在实际工作开发中，会遵循标准的 Git Work flow，对待不同的功能，会切出不同的分支进行 开发，所以，基于什么基准分支切出来的功能分支进行 开发，这是一个很重要的问题。</p>
+<p>　　如果切错了基准分支，你会发现可能最终开发完成之后， merge 不回去了。或者需要将某个分支上的 commit 代码，移植到某个分支上面，就需要使用到 cherry-pick 这个 git 命令了。</p>
+<p>这个命令的用法如下：</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">git cherry-pick -x &lt;commit_id&gt;</span><br></pre></td></tr></table></figure>
+
+<p>其中<code>-x</code>的参数代表保留原提交者的信息，后面的<code>&lt;commit_id&gt;</code>的写法就是<code>&lt;start-commit-id&gt;…&lt;end-commit-id&gt;</code>这个代表一个从startCommitId到endCommitId的一个左开右闭的区别<code>(startId, endId]</code>，如果需要包含startId可以添加一个符号<code>&lt;start-commit-id&gt;^…&lt;end-commit-id&gt;</code>这样就是<code>[startId,endID]</code>的一个闭区间了。</p>
+<p>　　合并过程中，如果出现了冲突，就和普通冲突一样，手动的解决，然后添加提交，再执行git cherry-pick –continue就可以继续了，直到合并完成。</p>
+<blockquote>
+<p><a href="https://juejin.cn/post/6844903479421435918">Cherry-Pick | 一日一 Git</a></p>
+</blockquote>
+<h3 id="结束语"><a href="#结束语" class="headerlink" title="结束语"></a>结束语</h3><p>　　Git远比我想象的强大很多，也是在学习的时候才发现他拥有的功能很多，我所讲解的也只是冰山一角。还有诸如<strong>rebase 与 merge，修正已提交的 Commit(不是最新的也可以修改)，丢弃 commit(不是最新的也可以丢弃)，修改已经 Push 的 commit</strong>等许多我都没有讲到。后面学习又在记录这些。</p>
+]]></content>
+      <categories>
+        <category>Android</category>
+      </categories>
+      <tags>
+        <tag>版本控制</tag>
+        <tag>Git</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>使用maven-publish发布aar包到maven仓库</title>
     <url>/2023/02/01/Maven/</url>
     <content><![CDATA[<h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>　　在日常开发过程中，为了避免重复造轮子或者是代码重复拷贝，我们都会将一部分代码打包成lib并且发布到maven仓库。发布到maven仓库有两种方式：分别是使用<strong>maven</strong>插件和<strong>maven-publish</strong>插件。这其中maven插件已经废弃了，就只梳理maven-publish插件的发布流程。</p>
@@ -1111,6 +1111,98 @@
       <tags>
         <tag>Gradle</tag>
         <tag>组件化</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>使用Room数据持久化</title>
+    <url>/2021/04/06/room/</url>
+    <content><![CDATA[<h3 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h3><p>　　SQLite代码写起来繁琐而且容易出错。始终不如ORM框架（ 对象-关系映射Object/Relation Mapping，简称ORM）来的舒服。在使用上Room数据库不如ObjectBox等NoSQL数据库使用更直观、更方便。但是ObjectBox的上手难度会更高一点。但是要是熟悉使用的话，ObjectBox我感觉会更好一点。感兴趣的也可以自行了解一哈。后续应该会出文章去讲解。</p>
+<blockquote>
+<p><a href="https://objectbox.io/features/">ObjectBox（速度快，全自动数据库升级，编译时检查）</a></p>
+</blockquote>
+<p>　　前面有点主次不分了，其实这些数据库在使用上还是有很多相似之处。下面正式介绍Room数据库：</p>
+<p>　　什么是Room数据库呢？这是Google推出的数据库框架，属于ORM框架。主要是对SQLite做了一层抽象。简化了开发者对数据库的操作，其实呢，就是减少了模板代码的编写。并且支持编译时检查，并且返回支持LiveData。构成Room的主要组件包括<code>Entity </code>( 数据实体，对应数据库中的表)、<code>Dao</code>(数据访问对象，包含访问数据库的方法)、<code>Database</code>(数据库持有者)。贴一张Room不同组件之间关系的官方图：</p>
+<img src="https://i.loli.net/2021/05/04/NH4j8SQqhyna1gw.png" alt="Room不同组件之间的关系" style="zoom:80%;" />
+
+<h3 id="Room的使用"><a href="#Room的使用" class="headerlink" title="Room的使用"></a>Room的使用</h3><h4 id="依赖"><a href="#依赖" class="headerlink" title="依赖"></a>依赖</h4><p>　　在模块的build.gradle中添加如下依赖</p>
+<figure class="highlight groovy"><table><tr><td class="code"><pre><span class="line">apply <span class="attr">plugin:</span> <span class="string">&#x27;kotlin-kapt&#x27;</span></span><br><span class="line">dependencies &#123;</span><br><span class="line">  <span class="keyword">def</span> room_version = <span class="string">&quot;2.2.6&quot;</span></span><br><span class="line"></span><br><span class="line">  implementation <span class="string">&quot;androidx.room:room-runtime:$room_version&quot;</span></span><br><span class="line">  kapt <span class="string">&quot;androidx.room:room-compiler:$room_version&quot;</span></span><br><span class="line"></span><br><span class="line">  <span class="comment">// optional - Kotlin Extensions and Coroutines support for Room</span></span><br><span class="line">  implementation <span class="string">&quot;androidx.room:room-ktx:$room_version&quot;</span></span><br><span class="line"></span><br><span class="line">  <span class="comment">// optional - Test helpers</span></span><br><span class="line">  testImplementation <span class="string">&quot;androidx.room:room-testing:$room_version&quot;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>添加完成，现在可以开始使用Room数据库了。</p>
+<h4 id="Entity-创建表"><a href="#Entity-创建表" class="headerlink" title="Entity(创建表)"></a>Entity(创建表)</h4><p>　　创建数据表的时候我们需要使用到<code>@Entity</code>注解。当一个类（这个类可以是普通类，也可以是data class）被当前注解标记时，会自动生成对应的数据库表单。</p>
+<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Entity(tableName = <span class="meta-string">&quot;fruit&quot;</span>)</span></span><br><span class="line"><span class="keyword">data</span> <span class="class"><span class="keyword">class</span> <span class="title">FruitEntity</span></span>(</span><br><span class="line">    <span class="meta">@PrimaryKey(autoGenerate = false)</span></span><br><span class="line">    <span class="keyword">var</span> id: <span class="built_in">Int</span>,</span><br><span class="line">    <span class="meta">@ColumnInfo(name = <span class="meta-string">&quot;fruitName&quot;</span>, defaultValue = <span class="meta-string">&quot;未知名称&quot;</span>)</span></span><br><span class="line">    <span class="keyword">var</span> name: String,</span><br><span class="line">    <span class="keyword">var</span> owner: <span class="built_in">Int</span>,</span><br><span class="line">    <span class="keyword">var</span> weight: <span class="built_in">Double</span>,</span><br><span class="line">    <span class="meta">@ColumnInfo(typeAffinity = ColumnInfo.REAL)</span></span><br><span class="line">    <span class="keyword">var</span> typeAff: String,</span><br><span class="line">    <span class="meta">@Ignore</span> <span class="comment">// 这里这样的Ignore写法是错误的，后面会讲到。这里只是为了表示有这个字段。</span></span><br><span class="line">    <span class="keyword">var</span> count: <span class="built_in">Int</span></span><br><span class="line">)</span><br></pre></td></tr></table></figure>
+
+<p>上面我们使用了<code>@Entity</code>来生成一个数据表，也使用很多相关的注解来辅助我们完善一张表。我们来一个一个的介绍使用到的注解。</p>
+<ul>
+<li><p><code>@Entity</code></p>
+<p>用于注释类，tableName指定将要创建的数据库表名称，不指定默认和类名一致。其中还有<code>primaryKeys</code>和<code>foreignKeys</code>等属性用来指定主外键集合。上面代码指定主键的方式还可以写成：</p>
+<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Entity(primaryKeys = [<span class="meta-string">&quot;id&quot;</span>])</span></span><br><span class="line"><span class="keyword">data</span> <span class="class"><span class="keyword">class</span> <span class="title">FruitEntity</span></span></span><br></pre></td></tr></table></figure>
+
+<p>这样我们就不需要使用<code>@PrimaryKey</code>来注解id。autoGenerate的默认值就是<code>false</code></p>
+<p>同样的外键也可以用如下形式：</p>
+<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Entity(</span></span><br><span class="line"><span class="meta">    foreignKeys = [ForeignKey(</span></span><br><span class="line"><span class="meta">        entity = UserEntity::class,</span></span><br><span class="line"><span class="meta">        parentColumns = [<span class="meta-string">&quot;uid&quot;</span>],</span></span><br><span class="line"><span class="meta">        childColumns = [<span class="meta-string">&quot;owner&quot;</span>]</span></span><br><span class="line"><span class="meta">    )</span>]</span><br><span class="line">)</span><br><span class="line"><span class="keyword">data</span> <span class="class"><span class="keyword">class</span> <span class="title">FruitEntity</span></span></span><br></pre></td></tr></table></figure>
+
+<p>还有最后一个<code>indices</code>用来提高查询的效率，你可能想为特定的字段建立索引。要为一个entity添加索引，在<code>@Entity</code>注解中添加<code>indices</code>属性，列出你想放在索引或者组合索引中的字段。就像这样:</p>
+<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Entity(indices = [Index(<span class="meta-string">&quot;name&quot;</span>)</span>, Index(<span class="string">&quot;name&quot;</span>, <span class="string">&quot;owner&quot;</span>)])</span><br><span class="line"><span class="keyword">data</span> <span class="class"><span class="keyword">class</span> <span class="title">FruitEntity</span></span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p><code>@PrimaryKey</code></p>
+<p>用于注释属性，标识这是一个主键。除了在<code>@Entity</code>中指定外还可以使用这个注解标识主键。</p>
+</li>
+<li><p><code>@ForeignKey</code></p>
+<p>用于注释属性，标识外键</p>
+</li>
+<li><p><code>@ColumnInfo</code></p>
+<p>用于注释属性，这个注解我讲几个比较重要的属性。<code>name</code>和<code>typeAffinity</code>属性。<code>name</code>属性是修改当前属性值对应生成的数据库表单中生成的列名。如<code>FruitEntity</code>生成的数据库表单中列名是<code>fruitName</code>而不是<code>name</code>。</p>
+<p><code>typeAffinity</code>(类型相像)是需要重点说一下的。</p>
+<p>在下面描述的条件下，在查询执行阶段，数据库引擎可能会在数字存储类（INTEGER和REAL）和TEXT存储类之间转换。</p>
+<ol>
+<li><p>Boolean数据类型</p>
+<p>SQLite没有单独的Boolean存储类，相反，Booean值以整数0（false）和1（true）存储。</p>
+</li>
+<li><p>日期和时间数据类型</p>
+<p>SQLite没有为存储日期和/或时间设置专门的存储类，相反，内置的日期和时间函数能够把日期和时间作为TEXT，REAL或INTEGER值存储：</p>
+<p>TEXT：作为ISO8601字符串（”YYYY-MM-DD HH:MM:SS.SSS”）。</p>
+<p>REAL：作为Julian天数，……</p>
+<p>INTEGER：作为Unix Time，即自1970-01-01 00:00:00 UTC以下的秒数。</p>
+</li>
+</ol>
+<p>为了最大化SQLite和其他数据库引擎之间的兼容性，SQLite支持列的“类型相像”的概念。这里重要的思想是，<strong>类型是推荐的，不是必需的</strong>。任何列仍然能够存储任何类型的数据。只是某些列，能够选择优先使用某种存储类。这个对列的优先存储类称作它的“相像”。</p>
+</li>
+<li><p><code>@Ignore</code></p>
+<p>用于注释属性，忽略该类的这个属性，数据表字段不生成对应的列。但是需要注意的是，如果你是用的是kotlin开发，被<code>@Ignore</code>注解的字段应当有默认值。不然他不知道该调用什么构造函数来实例化当前对象。既然有默认值了，就应该这样写：</p>
+<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Entity(tableName = <span class="meta-string">&quot;fruit&quot;</span>)</span></span><br><span class="line"><span class="keyword">data</span> <span class="class"><span class="keyword">class</span> <span class="title">FruitEntity</span> <span class="meta">@JvmOverloads</span> <span class="keyword">constructor</span></span>(</span><br><span class="line">    <span class="comment">// 前面的字段省略。。。</span></span><br><span class="line">    <span class="comment">// @JvmOverloads应该都知道什么意思吧，不知道反编译一下就知道了。</span></span><br><span class="line">    <span class="comment">// 加上@JvmOverloads编译时会生成多个构造函数。因为java不支持默认值。</span></span><br><span class="line">    <span class="comment">// 还是不理解的话可以自己反编译看看。</span></span><br><span class="line">    <span class="meta">@Ignore</span></span><br><span class="line">    <span class="keyword">var</span> count: <span class="built_in">Int</span>? = <span class="literal">null</span></span><br><span class="line">)</span><br></pre></td></tr></table></figure>
+
+<p>如果我不使用<code>@Ignore</code>属性就怎么写就都无所谓了。</p>
+</li>
+</ul>
+<h4 id="Dao"><a href="#Dao" class="headerlink" title="Dao"></a>Dao</h4><figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Dao</span></span><br><span class="line"><span class="keyword">abstract</span> <span class="class"><span class="keyword">class</span> <span class="title">FruitDao</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Delete</span></span><br><span class="line">    <span class="keyword">abstract</span> <span class="function"><span class="keyword">fun</span> <span class="title">delete</span><span class="params">(f: <span class="type">FruitEntity</span>)</span></span></span><br><span class="line"></span><br><span class="line">    <span class="meta">@Insert</span></span><br><span class="line">    <span class="keyword">abstract</span> <span class="function"><span class="keyword">fun</span> <span class="title">insert</span><span class="params">(<span class="keyword">vararg</span> f: <span class="type">FruitEntity</span>)</span></span></span><br><span class="line"></span><br><span class="line">    <span class="meta">@Query(<span class="meta-string">&quot;select * from fruit&quot;</span>)</span></span><br><span class="line">    <span class="keyword">abstract</span> <span class="function"><span class="keyword">fun</span> <span class="title">queryAll</span><span class="params">()</span></span>: List&lt;FruitEntity&gt;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>Dao非常的灵活，你可以传入不同的参数。这里的入参和返回值可以根据实际的需要随便写。如果都不能满足你的要求，你还可以自己去写sql语句（自己写的sql语句都使用<code>@Query</code>注解）。</p>
+<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Query(<span class="meta-string">&quot;update fruit set fruitName = &#x27;苹果&#x27; where fruitName = :name&quot;</span>)</span></span><br><span class="line"><span class="keyword">abstract</span> <span class="function"><span class="keyword">fun</span> <span class="title">update</span><span class="params">(name: <span class="type">String</span>)</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">@Query(<span class="meta-string">&quot;delete from fruit where fruitName = :name&quot;</span>)</span></span><br><span class="line"><span class="keyword">abstract</span> <span class="function"><span class="keyword">fun</span> <span class="title">delect</span><span class="params">(name: <span class="type">String</span>)</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">@Query(<span class="meta-string">&quot;update fruit set fruitName = &#x27;苹果&#x27; where fruitName in (:names)&quot;</span>)</span></span><br><span class="line"><span class="keyword">abstract</span> <span class="function"><span class="keyword">fun</span> <span class="title">update</span><span class="params">(<span class="keyword">vararg</span> names: <span class="type">String</span>)</span></span></span><br></pre></td></tr></table></figure>
+
+<p>除了上面这些简单的用法，你还可以返回可观察对象。就像这样:</p>
+<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Query(<span class="meta-string">&quot;select * from fruit&quot;</span>)</span></span><br><span class="line"><span class="keyword">abstract</span> <span class="function"><span class="keyword">fun</span> <span class="title">queryAll</span><span class="params">()</span></span>: LiveData&lt;List&lt;FruitEntity&gt;&gt;</span><br><span class="line"></span><br><span class="line"><span class="meta">@Query(<span class="meta-string">&quot;select * from fruit&quot;</span>)</span></span><br><span class="line"><span class="keyword">abstract</span> <span class="function"><span class="keyword">fun</span> <span class="title">queryAll</span><span class="params">()</span></span>: Flowable&lt;List&lt;FruitEntity&gt;&gt;</span><br></pre></td></tr></table></figure>
+
+<h4 id="DataBase"><a href="#DataBase" class="headerlink" title="DataBase"></a>DataBase</h4><figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Database(entities = [FruitEntity::class], version = 1)</span></span><br><span class="line"><span class="keyword">abstract</span> <span class="class"><span class="keyword">class</span> <span class="title">FruitDatabase</span> : <span class="type">RoomDatabase</span></span>() &#123;</span><br><span class="line">    <span class="keyword">abstract</span> <span class="function"><span class="keyword">fun</span> <span class="title">fruitDao</span><span class="params">()</span></span>: FruitDao</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>　　创建好这三个组件，Room的配置基本就已经完成了，通常我们需要的业务逻辑都加写在Dao中的抽象方法中。现在只需要build一次就可以让Room帮我们自动生成对应的实现代码。</p>
+<h4 id="使用"><a href="#使用" class="headerlink" title="使用"></a>使用</h4><p>　　现在在需要使用的地方调用如下代码：</p>
+<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="keyword">val</span> db = Room.databaseBuilder(applicationContext, FruitDatabase::<span class="keyword">class</span>.java, <span class="string">&quot;database.db&quot;</span>)</span><br><span class="line">	.allowMainThreadQueries()</span><br><span class="line">	.build()</span><br><span class="line">db.fruitDao().insert(FruitEntity())</span><br></pre></td></tr></table></figure>
+
+<p>现在你就可以简单的使用Room了。</p>
+<p>　　最后提一句就是Room的事务，第一种方式就是在dao类中使用<code>@Transaction</code>注释。第二种就是</p>
+<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line">db.runInTransaction &#123;</span><br><span class="line">	db.fruitDao().update(<span class="string">&quot;苦瓜&quot;</span>, <span class="string">&quot;芒果&quot;</span>)</span><br><span class="line">	db.fruitDao().update(<span class="string">&quot;苹果&quot;</span>, <span class="string">&quot;香蕉&quot;</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+
+
+]]></content>
+      <categories>
+        <category>Android</category>
+      </categories>
+      <tags>
+        <tag>持久化</tag>
+        <tag>数据库</tag>
       </tags>
   </entry>
   <entry>
@@ -1289,98 +1381,6 @@
       <tags>
         <tag>持久化</tag>
         <tag>适配</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>使用Room数据持久化</title>
-    <url>/2021/04/06/room/</url>
-    <content><![CDATA[<h3 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h3><p>　　SQLite代码写起来繁琐而且容易出错。始终不如ORM框架（ 对象-关系映射Object/Relation Mapping，简称ORM）来的舒服。在使用上Room数据库不如ObjectBox等NoSQL数据库使用更直观、更方便。但是ObjectBox的上手难度会更高一点。但是要是熟悉使用的话，ObjectBox我感觉会更好一点。感兴趣的也可以自行了解一哈。后续应该会出文章去讲解。</p>
-<blockquote>
-<p><a href="https://objectbox.io/features/">ObjectBox（速度快，全自动数据库升级，编译时检查）</a></p>
-</blockquote>
-<p>　　前面有点主次不分了，其实这些数据库在使用上还是有很多相似之处。下面正式介绍Room数据库：</p>
-<p>　　什么是Room数据库呢？这是Google推出的数据库框架，属于ORM框架。主要是对SQLite做了一层抽象。简化了开发者对数据库的操作，其实呢，就是减少了模板代码的编写。并且支持编译时检查，并且返回支持LiveData。构成Room的主要组件包括<code>Entity </code>( 数据实体，对应数据库中的表)、<code>Dao</code>(数据访问对象，包含访问数据库的方法)、<code>Database</code>(数据库持有者)。贴一张Room不同组件之间关系的官方图：</p>
-<img src="https://i.loli.net/2021/05/04/NH4j8SQqhyna1gw.png" alt="Room不同组件之间的关系" style="zoom:80%;" />
-
-<h3 id="Room的使用"><a href="#Room的使用" class="headerlink" title="Room的使用"></a>Room的使用</h3><h4 id="依赖"><a href="#依赖" class="headerlink" title="依赖"></a>依赖</h4><p>　　在模块的build.gradle中添加如下依赖</p>
-<figure class="highlight groovy"><table><tr><td class="code"><pre><span class="line">apply <span class="attr">plugin:</span> <span class="string">&#x27;kotlin-kapt&#x27;</span></span><br><span class="line">dependencies &#123;</span><br><span class="line">  <span class="keyword">def</span> room_version = <span class="string">&quot;2.2.6&quot;</span></span><br><span class="line"></span><br><span class="line">  implementation <span class="string">&quot;androidx.room:room-runtime:$room_version&quot;</span></span><br><span class="line">  kapt <span class="string">&quot;androidx.room:room-compiler:$room_version&quot;</span></span><br><span class="line"></span><br><span class="line">  <span class="comment">// optional - Kotlin Extensions and Coroutines support for Room</span></span><br><span class="line">  implementation <span class="string">&quot;androidx.room:room-ktx:$room_version&quot;</span></span><br><span class="line"></span><br><span class="line">  <span class="comment">// optional - Test helpers</span></span><br><span class="line">  testImplementation <span class="string">&quot;androidx.room:room-testing:$room_version&quot;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>添加完成，现在可以开始使用Room数据库了。</p>
-<h4 id="Entity-创建表"><a href="#Entity-创建表" class="headerlink" title="Entity(创建表)"></a>Entity(创建表)</h4><p>　　创建数据表的时候我们需要使用到<code>@Entity</code>注解。当一个类（这个类可以是普通类，也可以是data class）被当前注解标记时，会自动生成对应的数据库表单。</p>
-<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Entity(tableName = <span class="meta-string">&quot;fruit&quot;</span>)</span></span><br><span class="line"><span class="keyword">data</span> <span class="class"><span class="keyword">class</span> <span class="title">FruitEntity</span></span>(</span><br><span class="line">    <span class="meta">@PrimaryKey(autoGenerate = false)</span></span><br><span class="line">    <span class="keyword">var</span> id: <span class="built_in">Int</span>,</span><br><span class="line">    <span class="meta">@ColumnInfo(name = <span class="meta-string">&quot;fruitName&quot;</span>, defaultValue = <span class="meta-string">&quot;未知名称&quot;</span>)</span></span><br><span class="line">    <span class="keyword">var</span> name: String,</span><br><span class="line">    <span class="keyword">var</span> owner: <span class="built_in">Int</span>,</span><br><span class="line">    <span class="keyword">var</span> weight: <span class="built_in">Double</span>,</span><br><span class="line">    <span class="meta">@ColumnInfo(typeAffinity = ColumnInfo.REAL)</span></span><br><span class="line">    <span class="keyword">var</span> typeAff: String,</span><br><span class="line">    <span class="meta">@Ignore</span> <span class="comment">// 这里这样的Ignore写法是错误的，后面会讲到。这里只是为了表示有这个字段。</span></span><br><span class="line">    <span class="keyword">var</span> count: <span class="built_in">Int</span></span><br><span class="line">)</span><br></pre></td></tr></table></figure>
-
-<p>上面我们使用了<code>@Entity</code>来生成一个数据表，也使用很多相关的注解来辅助我们完善一张表。我们来一个一个的介绍使用到的注解。</p>
-<ul>
-<li><p><code>@Entity</code></p>
-<p>用于注释类，tableName指定将要创建的数据库表名称，不指定默认和类名一致。其中还有<code>primaryKeys</code>和<code>foreignKeys</code>等属性用来指定主外键集合。上面代码指定主键的方式还可以写成：</p>
-<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Entity(primaryKeys = [<span class="meta-string">&quot;id&quot;</span>])</span></span><br><span class="line"><span class="keyword">data</span> <span class="class"><span class="keyword">class</span> <span class="title">FruitEntity</span></span></span><br></pre></td></tr></table></figure>
-
-<p>这样我们就不需要使用<code>@PrimaryKey</code>来注解id。autoGenerate的默认值就是<code>false</code></p>
-<p>同样的外键也可以用如下形式：</p>
-<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Entity(</span></span><br><span class="line"><span class="meta">    foreignKeys = [ForeignKey(</span></span><br><span class="line"><span class="meta">        entity = UserEntity::class,</span></span><br><span class="line"><span class="meta">        parentColumns = [<span class="meta-string">&quot;uid&quot;</span>],</span></span><br><span class="line"><span class="meta">        childColumns = [<span class="meta-string">&quot;owner&quot;</span>]</span></span><br><span class="line"><span class="meta">    )</span>]</span><br><span class="line">)</span><br><span class="line"><span class="keyword">data</span> <span class="class"><span class="keyword">class</span> <span class="title">FruitEntity</span></span></span><br></pre></td></tr></table></figure>
-
-<p>还有最后一个<code>indices</code>用来提高查询的效率，你可能想为特定的字段建立索引。要为一个entity添加索引，在<code>@Entity</code>注解中添加<code>indices</code>属性，列出你想放在索引或者组合索引中的字段。就像这样:</p>
-<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Entity(indices = [Index(<span class="meta-string">&quot;name&quot;</span>)</span>, Index(<span class="string">&quot;name&quot;</span>, <span class="string">&quot;owner&quot;</span>)])</span><br><span class="line"><span class="keyword">data</span> <span class="class"><span class="keyword">class</span> <span class="title">FruitEntity</span></span></span><br></pre></td></tr></table></figure>
-</li>
-<li><p><code>@PrimaryKey</code></p>
-<p>用于注释属性，标识这是一个主键。除了在<code>@Entity</code>中指定外还可以使用这个注解标识主键。</p>
-</li>
-<li><p><code>@ForeignKey</code></p>
-<p>用于注释属性，标识外键</p>
-</li>
-<li><p><code>@ColumnInfo</code></p>
-<p>用于注释属性，这个注解我讲几个比较重要的属性。<code>name</code>和<code>typeAffinity</code>属性。<code>name</code>属性是修改当前属性值对应生成的数据库表单中生成的列名。如<code>FruitEntity</code>生成的数据库表单中列名是<code>fruitName</code>而不是<code>name</code>。</p>
-<p><code>typeAffinity</code>(类型相像)是需要重点说一下的。</p>
-<p>在下面描述的条件下，在查询执行阶段，数据库引擎可能会在数字存储类（INTEGER和REAL）和TEXT存储类之间转换。</p>
-<ol>
-<li><p>Boolean数据类型</p>
-<p>SQLite没有单独的Boolean存储类，相反，Booean值以整数0（false）和1（true）存储。</p>
-</li>
-<li><p>日期和时间数据类型</p>
-<p>SQLite没有为存储日期和/或时间设置专门的存储类，相反，内置的日期和时间函数能够把日期和时间作为TEXT，REAL或INTEGER值存储：</p>
-<p>TEXT：作为ISO8601字符串（”YYYY-MM-DD HH:MM:SS.SSS”）。</p>
-<p>REAL：作为Julian天数，……</p>
-<p>INTEGER：作为Unix Time，即自1970-01-01 00:00:00 UTC以下的秒数。</p>
-</li>
-</ol>
-<p>为了最大化SQLite和其他数据库引擎之间的兼容性，SQLite支持列的“类型相像”的概念。这里重要的思想是，<strong>类型是推荐的，不是必需的</strong>。任何列仍然能够存储任何类型的数据。只是某些列，能够选择优先使用某种存储类。这个对列的优先存储类称作它的“相像”。</p>
-</li>
-<li><p><code>@Ignore</code></p>
-<p>用于注释属性，忽略该类的这个属性，数据表字段不生成对应的列。但是需要注意的是，如果你是用的是kotlin开发，被<code>@Ignore</code>注解的字段应当有默认值。不然他不知道该调用什么构造函数来实例化当前对象。既然有默认值了，就应该这样写：</p>
-<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Entity(tableName = <span class="meta-string">&quot;fruit&quot;</span>)</span></span><br><span class="line"><span class="keyword">data</span> <span class="class"><span class="keyword">class</span> <span class="title">FruitEntity</span> <span class="meta">@JvmOverloads</span> <span class="keyword">constructor</span></span>(</span><br><span class="line">    <span class="comment">// 前面的字段省略。。。</span></span><br><span class="line">    <span class="comment">// @JvmOverloads应该都知道什么意思吧，不知道反编译一下就知道了。</span></span><br><span class="line">    <span class="comment">// 加上@JvmOverloads编译时会生成多个构造函数。因为java不支持默认值。</span></span><br><span class="line">    <span class="comment">// 还是不理解的话可以自己反编译看看。</span></span><br><span class="line">    <span class="meta">@Ignore</span></span><br><span class="line">    <span class="keyword">var</span> count: <span class="built_in">Int</span>? = <span class="literal">null</span></span><br><span class="line">)</span><br></pre></td></tr></table></figure>
-
-<p>如果我不使用<code>@Ignore</code>属性就怎么写就都无所谓了。</p>
-</li>
-</ul>
-<h4 id="Dao"><a href="#Dao" class="headerlink" title="Dao"></a>Dao</h4><figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Dao</span></span><br><span class="line"><span class="keyword">abstract</span> <span class="class"><span class="keyword">class</span> <span class="title">FruitDao</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Delete</span></span><br><span class="line">    <span class="keyword">abstract</span> <span class="function"><span class="keyword">fun</span> <span class="title">delete</span><span class="params">(f: <span class="type">FruitEntity</span>)</span></span></span><br><span class="line"></span><br><span class="line">    <span class="meta">@Insert</span></span><br><span class="line">    <span class="keyword">abstract</span> <span class="function"><span class="keyword">fun</span> <span class="title">insert</span><span class="params">(<span class="keyword">vararg</span> f: <span class="type">FruitEntity</span>)</span></span></span><br><span class="line"></span><br><span class="line">    <span class="meta">@Query(<span class="meta-string">&quot;select * from fruit&quot;</span>)</span></span><br><span class="line">    <span class="keyword">abstract</span> <span class="function"><span class="keyword">fun</span> <span class="title">queryAll</span><span class="params">()</span></span>: List&lt;FruitEntity&gt;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>Dao非常的灵活，你可以传入不同的参数。这里的入参和返回值可以根据实际的需要随便写。如果都不能满足你的要求，你还可以自己去写sql语句（自己写的sql语句都使用<code>@Query</code>注解）。</p>
-<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Query(<span class="meta-string">&quot;update fruit set fruitName = &#x27;苹果&#x27; where fruitName = :name&quot;</span>)</span></span><br><span class="line"><span class="keyword">abstract</span> <span class="function"><span class="keyword">fun</span> <span class="title">update</span><span class="params">(name: <span class="type">String</span>)</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">@Query(<span class="meta-string">&quot;delete from fruit where fruitName = :name&quot;</span>)</span></span><br><span class="line"><span class="keyword">abstract</span> <span class="function"><span class="keyword">fun</span> <span class="title">delect</span><span class="params">(name: <span class="type">String</span>)</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">@Query(<span class="meta-string">&quot;update fruit set fruitName = &#x27;苹果&#x27; where fruitName in (:names)&quot;</span>)</span></span><br><span class="line"><span class="keyword">abstract</span> <span class="function"><span class="keyword">fun</span> <span class="title">update</span><span class="params">(<span class="keyword">vararg</span> names: <span class="type">String</span>)</span></span></span><br></pre></td></tr></table></figure>
-
-<p>除了上面这些简单的用法，你还可以返回可观察对象。就像这样:</p>
-<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Query(<span class="meta-string">&quot;select * from fruit&quot;</span>)</span></span><br><span class="line"><span class="keyword">abstract</span> <span class="function"><span class="keyword">fun</span> <span class="title">queryAll</span><span class="params">()</span></span>: LiveData&lt;List&lt;FruitEntity&gt;&gt;</span><br><span class="line"></span><br><span class="line"><span class="meta">@Query(<span class="meta-string">&quot;select * from fruit&quot;</span>)</span></span><br><span class="line"><span class="keyword">abstract</span> <span class="function"><span class="keyword">fun</span> <span class="title">queryAll</span><span class="params">()</span></span>: Flowable&lt;List&lt;FruitEntity&gt;&gt;</span><br></pre></td></tr></table></figure>
-
-<h4 id="DataBase"><a href="#DataBase" class="headerlink" title="DataBase"></a>DataBase</h4><figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Database(entities = [FruitEntity::class], version = 1)</span></span><br><span class="line"><span class="keyword">abstract</span> <span class="class"><span class="keyword">class</span> <span class="title">FruitDatabase</span> : <span class="type">RoomDatabase</span></span>() &#123;</span><br><span class="line">    <span class="keyword">abstract</span> <span class="function"><span class="keyword">fun</span> <span class="title">fruitDao</span><span class="params">()</span></span>: FruitDao</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>　　创建好这三个组件，Room的配置基本就已经完成了，通常我们需要的业务逻辑都加写在Dao中的抽象方法中。现在只需要build一次就可以让Room帮我们自动生成对应的实现代码。</p>
-<h4 id="使用"><a href="#使用" class="headerlink" title="使用"></a>使用</h4><p>　　现在在需要使用的地方调用如下代码：</p>
-<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line"><span class="keyword">val</span> db = Room.databaseBuilder(applicationContext, FruitDatabase::<span class="keyword">class</span>.java, <span class="string">&quot;database.db&quot;</span>)</span><br><span class="line">	.allowMainThreadQueries()</span><br><span class="line">	.build()</span><br><span class="line">db.fruitDao().insert(FruitEntity())</span><br></pre></td></tr></table></figure>
-
-<p>现在你就可以简单的使用Room了。</p>
-<p>　　最后提一句就是Room的事务，第一种方式就是在dao类中使用<code>@Transaction</code>注释。第二种就是</p>
-<figure class="highlight kotlin"><table><tr><td class="code"><pre><span class="line">db.runInTransaction &#123;</span><br><span class="line">	db.fruitDao().update(<span class="string">&quot;苦瓜&quot;</span>, <span class="string">&quot;芒果&quot;</span>)</span><br><span class="line">	db.fruitDao().update(<span class="string">&quot;苹果&quot;</span>, <span class="string">&quot;香蕉&quot;</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-
-
-
-
-]]></content>
-      <categories>
-        <category>Android</category>
-      </categories>
-      <tags>
-        <tag>持久化</tag>
-        <tag>数据库</tag>
       </tags>
   </entry>
 </search>
